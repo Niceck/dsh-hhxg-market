@@ -1,0 +1,18 @@
+# dsh-hhxg-market — bundle patch layer.
+#
+# 安装（dsh plugin --profile web add @hhxg/dsh-hhxg-market 或 github:Niceck/dsh-hhxg-market）
+# 时由 loader 叠加到 profile 上，挂载本插件行。
+#
+# inject 必填：等待 tools 服务就绪后再激活，否则 apply 可能在 tools
+# 服务存在之前运行，所有工具注册静默失败。
+#
+# VIP 解锁：在你 profile 的 cordis.patch.yml 里按 id 补 config（或在
+# 设置界面填写）：
+#   - update:
+#       - id: hhxg-market
+#         config:
+#           mcpToken: "<hhxg.top/account/mcp.html 生成的 MCP Token>"
+- insert:
+    - id: hhxg-market
+      name: '@hhxg/dsh-hhxg-market'
+      config: {}
