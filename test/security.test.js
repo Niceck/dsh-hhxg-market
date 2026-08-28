@@ -94,3 +94,40 @@ test('HIGH-1 兜底: mcpCall 网络错误信息经 scrub（fetch 打桩抛含 to
   assert.ok(!err.message.includes(tok), '错误信息不得含 token 原文')
   assert.match(err.message, /«token»/)
 })
+
+test('瞬时 5xx 自动重试一次后成功（真机实测 EdgeOne 偶发 545）', async () => {
+  const origFetch = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => {
+    calls++
+    if (calls === 1) return new Response('edge error', { status: 545 })
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  try {
+    const out = await fetchPublic('/datasets.json')
+    assert.deepEqual(out, { ok: true })
+    assert.equal(calls, 2, '应恰好重试一次')
+  } finally {
+    globalThis.fetch = origFetch
+  }
+})
+
+test('404 不重试，直接抛错', async () => {
+  const origFetch = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => {
+    calls++
+    return new Response('nope', { status: 404 })
+  }
+  let err
+  try {
+    err = await fetchPublic('/missing.json').then(() => null, (e) => e)
+  } finally {
+    globalThis.fetch = origFetch
+  }
+  assert.match(err.message, /数据不存在/)
+  assert.equal(calls, 1, '4xx 不应重试')
+})
