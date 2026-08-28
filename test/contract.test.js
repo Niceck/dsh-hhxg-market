@@ -43,9 +43,9 @@ const TEXT_OUTPUT = {
   render: (_args, value) => [{ type: 'text', text: String(value ?? '') }],
 }
 
-test('全部 11 个工具 spec 通过真实 defineTool 编译', { skip: !defineTool && '本机无 dsh SDK' }, () => {
+test('全部 12 个工具 spec 通过真实 defineTool 编译', { skip: !defineTool && '本机无 dsh SDK' }, () => {
   const specs = [...FREE_TOOLS, ...VIP_TOOLS]
-  assert.equal(specs.length, 11)
+  assert.equal(specs.length, 12)
   for (const spec of specs) {
     assert.doesNotThrow(
       () => defineTool({

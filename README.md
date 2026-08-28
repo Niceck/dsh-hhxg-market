@@ -4,7 +4,7 @@
 
 把 A股日报快照、财经快讯、融资融券、市场情绪、题材热度等量化数据变成 dsh Agent 的原生工具——问一句"今天市场情绪怎么样"，模型自己调工具拿真实数据回答。
 
-- **6 个免费工具**：零配置、无需注册，安装即用
+- **7 个免费工具**：零配置、无需注册，安装即用
 - **5 个 VIP 工具**：个股综合诊断、量化策略信号、连板晋级预测等，填入 [MCP Token](https://hhxg.top/account/mcp.html) 解锁
 
 ## 安装
@@ -31,6 +31,7 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 | `hhxg_calendar` | A股日历：交易日 / 交割日 / 财报披露 / 限售解禁 |
 | `hhxg_sentiment` | 近 7 交易日市场情绪：涨停家数 / 最高连板 / 连板分布 / 热门行业与概念 |
 | `hhxg_themes` | 当日题材概念热度榜 TOP 30（游资参与 / 涨停数 / 涨停占比） |
+| `hhxg_datasets` | 全部 46 个开放数据集目录（id / 分类 / 格式 / 更新频率），`hhxg_query_dataset` 的 id 发现入口 |
 
 数据每个交易日盘后约 20:00 更新（快讯每小时）；非交易日返回最近一个交易日。
 
@@ -42,7 +43,7 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 | `hhxg_strategy_signals` | 量化选股/风险预警全市场信号（约 5500 股 × 107 指标，12 类策略） |
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
-| `hhxg_query_dataset` | 对 hhxg 全部数据集做过滤 / 排序 / 截断查询（[数据目录](https://hhxg.top/data-catalog.html)） |
+| `hhxg_query_dataset` | 对 JSON 类数据集做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id） |
 
 **解锁步骤**：
 

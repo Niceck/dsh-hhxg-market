@@ -12,8 +12,8 @@ import { FREE_TOOLS, VIP_TOOLS, vipLockedMessage } from '../lib/tools.js'
 
 const SKIP_NET = process.env.HHXG_SKIP_NETWORK === '1'
 
-test('注册表形态：6 免费 + 5 VIP，名称唯一且带 hhxg_ 前缀', () => {
-  assert.equal(FREE_TOOLS.length, 6)
+test('注册表形态：7 免费 + 5 VIP，名称唯一且带 hhxg_ 前缀', () => {
+  assert.equal(FREE_TOOLS.length, 7)
   assert.equal(VIP_TOOLS.length, 5)
   const names = [...FREE_TOOLS, ...VIP_TOOLS].map((t) => t.name)
   assert.equal(new Set(names).size, names.length)
