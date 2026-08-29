@@ -158,6 +158,53 @@ for (const status of [429, 500]) {
   })
 }
 
+test('MCP 非 2xx 上游错误详情必须脱敏 Token', async () => {
+  const tok = 'dummy_token_abcdefgh12345678'
+  const origFetch = globalThis.fetch
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({
+      error: { message: `Bearer ${tok} leaked ${tok}` },
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  let err
+  try {
+    err = await mcpCall(tok, 'diagnose_stock', {}).then(() => null, (e) => e)
+  } finally {
+    globalThis.fetch = origFetch
+  }
+  assert.ok(err)
+  assert.ok(!err.message.includes(tok), '非 2xx 错误不得含 token 原文')
+  assert.match(err.message, /«token»/)
+})
+
+for (const status of [401, 403]) {
+  test(`MCP HTTP ${status} 保留专用换 Token 指引`, async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({
+        error: { data: { errorCode: 'TOKEN_EXPIRED' } },
+      }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    let err
+    try {
+      err = await mcpCall('dummy_token_1234567890', 'diagnose_stock', {}).then(
+        () => null,
+        (e) => e,
+      )
+    } finally {
+      globalThis.fetch = origFetch
+    }
+    assert.ok(err)
+    assert.match(err.message, /MCP Token 无效或已过期/)
+    assert.match(err.message, /account\/mcp\.html/)
+    assert.doesNotMatch(err.message, /请求失败 HTTP/)
+  })
+}
+
 test('公开请求 User-Agent 与 package version 保持一致', async () => {
   const origFetch = globalThis.fetch
   let userAgent = ''
