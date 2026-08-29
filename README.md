@@ -9,6 +9,8 @@
 
 ## 安装
 
+直接从 GitHub 安装：
+
 ```bash
 dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 ```
@@ -82,8 +84,9 @@ Header: Authorization: Bearer <你的 MCP Token>
 ## 开发
 
 ```bash
-node --test 'test/*.test.js'          # 全部测试（免费工具会真实请求 hhxg.top）
-HHXG_SKIP_NETWORK=1 node --test 'test/*.test.js'   # 只跑纯逻辑测试
+npm ci                                           # 按 lockfile 安装开发/peer 依赖
+npm test                                         # 全部测试（免费工具会真实请求 hhxg.top）
+HHXG_SKIP_NETWORK=1 npm test                     # 只跑纯逻辑与契约测试
 ```
 
 纯 JavaScript（ESM），无构建步骤；`lib/` 即源码。

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 (2026-08-29)
+
+- **修复**：MCP 上游返回 429/5xx 等非 2xx HTTP 状态时不再把空 JSON 误判成成功结果，统一返回带状态码且已脱敏的错误。
+- **修复**：User-Agent 自动读取 package version，免费工具数量日志与未解锁提示统一为 7 个并补上 `hhxg_datasets`。
+- **工程化**：新增 package lock、Node 18/20/22 确定性 CI、定时真实端点冒烟和 Dependabot。
+
 ## 0.1.0 (2026-08-28)
 
 首个版本。

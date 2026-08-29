@@ -6,8 +6,12 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
 import { mcpCall, fetchPublic } from '../lib/api.js'
 import { FREE_TOOLS } from '../lib/tools.js'
+
+const require = createRequire(import.meta.url)
+const { version: packageVersion } = require('../package.json')
 
 test('HIGH-1: 含换行/中文/空 token 被入口拒绝，错误信息不含 token 原文', async () => {
   const evil = 'valid_looking_token_abc\ninjected_tail'
@@ -130,4 +134,44 @@ test('404 不重试，直接抛错', async () => {
   }
   assert.match(err.message, /数据不存在/)
   assert.equal(calls, 1, '4xx 不应重试')
+})
+
+for (const status of [429, 500]) {
+  test(`MCP HTTP ${status} 即使返回空 JSON 也必须按失败处理`, async () => {
+    const origFetch = globalThis.fetch
+    globalThis.fetch = async () =>
+      new Response('{}', {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    let err
+    try {
+      err = await mcpCall('dummy_token_1234567890', 'diagnose_stock', {}).then(
+        () => null,
+        (e) => e,
+      )
+    } finally {
+      globalThis.fetch = origFetch
+    }
+    assert.ok(err, `HTTP ${status} 不得解析成成功结果`)
+    assert.match(err.message, new RegExp(`HTTP ${status}`))
+  })
+}
+
+test('公开请求 User-Agent 与 package version 保持一致', async () => {
+  const origFetch = globalThis.fetch
+  let userAgent = ''
+  globalThis.fetch = async (_url, init) => {
+    userAgent = init?.headers?.['User-Agent'] || ''
+    return new Response('{}', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  try {
+    await fetchPublic('/datasets.json')
+  } finally {
+    globalThis.fetch = origFetch
+  }
+  assert.equal(userAgent, `dsh-hhxg-market/${packageVersion}`)
 })

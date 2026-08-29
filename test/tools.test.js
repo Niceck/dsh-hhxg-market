@@ -43,6 +43,7 @@ test('未配置 token 的占位文案含开通与配置指引', () => {
   assert.match(msg, /vip\.html/)
   assert.match(msg, /account\/mcp\.html/)
   assert.match(msg, /mcpToken/)
+  assert.match(msg, /hhxg_datasets/)
 })
 
 for (const spec of FREE_TOOLS) {
