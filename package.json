@@ -30,7 +30,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "node --test 'test/*.test.js'"
+    "test": "node --test test/contract.test.js test/security.test.js test/tools.test.js"
   },
   "repository": {
     "type": "git",
