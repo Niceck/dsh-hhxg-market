@@ -33,7 +33,7 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 | `hhxg_calendar` | A股日历：交易日 / 交割日 / 财报披露 / 限售解禁 |
 | `hhxg_sentiment` | 近 7 交易日市场情绪：涨停家数 / 最高连板 / 连板分布 / 热门行业与概念 |
 | `hhxg_themes` | 当日题材概念热度榜 TOP 30（游资参与 / 涨停数 / 涨停占比） |
-| `hhxg_datasets` | 全部 46 个开放数据集目录（id / 分类 / 格式 / 更新频率），`hhxg_query_dataset` 的 id 发现入口 |
+| `hhxg_datasets` | 全部开放数据集目录（id / 分类 / 格式 / 更新频率 / 能否用 `hhxg_query_dataset` 查询），`hhxg_query_dataset` 的 id 发现入口 |
 
 数据每个交易日盘后约 20:00 更新（快讯每小时）；非交易日返回最近一个交易日。
 
@@ -42,10 +42,10 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 | 工具 | 说明 |
 |---|---|
 | `hhxg_diagnose_stock` | 个股综合诊断：日/周/月技术指标、异动评级、两融趋势、龙虎榜、涨停、大宗、公告、概念 |
-| `hhxg_strategy_signals` | 量化选股/风险预警全市场信号（约 5500 股 × 107 指标，12 类策略） |
+| `hhxg_strategy_signals` | 按量化策略预设筛选全市场股票，直接返回命中的个股（8 个预设：涨停 / 放量突破 / 缩量整理 / 九转买入 / 九转卖出 / KDJ 超买 / KDJ 超卖 / 暴跌预警），`limit` 1-100 |
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
-| `hhxg_query_dataset` | 对 JSON 类数据集做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id） |
+| `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id 与是否可查） |
 
 **解锁步骤**：
 
@@ -63,9 +63,13 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 
 未填 Token 时 VIP 工具仍会注册为引导占位（调用返回开通指引），不影响免费工具。设 `enableVipTools: false` 可整体关闭 VIP 工具注册。
 
+`hhxg_strategy_signals` 的 12 个策略标识里有 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。要算这 4 个，用 `hhxg_query_dataset(dataset_id="quant_signal_pool")` 取全市场指标全表的下载地址后自行计算。
+
+**版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，保留到 2026-11-30，请在此之前升级。
+
 ### 零代码替代方案（VIP 用户）
 
-dsh 原生支持 MCP。不装本插件、或想要全部 11 个 MCP 工具 + resources + prompts，可直接把 hhxg MCP server 挂进 dsh 的 MCP 配置：
+dsh 原生支持 MCP。不装本插件、或想要全部 7 个 MCP 工具 + resources + prompts，可直接把 hhxg MCP server 挂进 dsh 的 MCP 配置：
 
 ```
 URL:    https://hhxg.top/mcp/rpc

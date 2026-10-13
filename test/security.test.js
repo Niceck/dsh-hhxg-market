@@ -222,3 +222,87 @@ test('公开请求 User-Agent 与 package version 保持一致', async () => {
   }
   assert.equal(userAgent, `dsh-hhxg-market/${packageVersion}`)
 })
+
+// ---- VIP 通道（mcpCall）对边缘瞬时 5xx 的重试 ----
+// EdgeOne 函数实例冷启动时约 2–3% 的首请求会被平台以 545 击杀，隔几百毫秒重试即好。
+// 免费通道（fetchPublic）早就重试一次，VIP 通道此前直接把 545 报给用户。VIP 工具全是只读查询，重试无副作用。
+function mcpOk(text) {
+  return new Response(
+    JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text }] } }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  )
+}
+
+test('mcpCall：首次 545 自动重试一次后成功', async () => {
+  const origFetch = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => {
+    calls++
+    if (calls === 1) return new Response('Error return from script', { status: 545 })
+    return mcpOk('hello')
+  }
+  try {
+    const out = await mcpCall('dummy_token_1234567890', 'diagnose_stock', { code: '600519' })
+    assert.equal(out, 'hello')
+    assert.equal(calls, 2, '应恰好重试一次')
+  } finally {
+    globalThis.fetch = origFetch
+  }
+})
+
+test('mcpCall：连续 5xx 只重试一次，仍失败则抛带状态码的错误', async () => {
+  const origFetch = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => {
+    calls++
+    return new Response('Error return from script', { status: 545 })
+  }
+  try {
+    const err = await mcpCall('dummy_token_1234567890', 'diagnose_stock', {}).then(() => null, (e) => e)
+    assert.ok(err instanceof Error)
+    assert.match(err.message, /545/)
+    assert.equal(calls, 2, '不得无限重试')
+  } finally {
+    globalThis.fetch = origFetch
+  }
+})
+
+test('mcpCall：401 / 4xx / 业务错误不重试', async () => {
+  const origFetch = globalThis.fetch
+  for (const make of [
+    () => new Response(JSON.stringify({ error: { data: { errorCode: 'TOKEN_INVALID' } } }), { status: 401 }),
+    () => new Response(JSON.stringify({ error: { message: 'bad request' } }), { status: 400 }),
+    () => new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { message: '工具不存在' } }), { status: 200 }),
+  ]) {
+    let calls = 0
+    globalThis.fetch = async () => {
+      calls++
+      return make()
+    }
+    try {
+      const err = await mcpCall('dummy_token_1234567890', 'diagnose_stock', {}).then(() => null, (e) => e)
+      assert.ok(err instanceof Error)
+      assert.equal(calls, 1, '非 5xx 不应重试')
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  }
+})
+
+test('mcpCall：重试等待期间被取消时不再发第二次请求', async () => {
+  const origFetch = globalThis.fetch
+  let calls = 0
+  const controller = new AbortController()
+  globalThis.fetch = async () => {
+    calls++
+    queueMicrotask(() => controller.abort())
+    return new Response('Error return from script', { status: 545 })
+  }
+  try {
+    const err = await mcpCall('dummy_token_1234567890', 'diagnose_stock', {}, controller.signal).then(() => null, (e) => e)
+    assert.ok(err, '取消后应以错误结束')
+    assert.equal(calls, 1)
+  } finally {
+    globalThis.fetch = origFetch
+  }
+})
