@@ -21,6 +21,8 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 dsh plugin --profile web add @hhxg/dsh-hhxg-market
 ```
 
+> **⚠️ 仍在用 0.2.x 的请在 2026-11-30 前升级**：0.2.x 的 `hhxg_strategy_signals` / `hhxg_stock_alerts` 调用的服务端旧工具名只保留到 2026-11-30，之后这两个工具会失效（其余工具不受影响）。重新执行上面的 GitHub 安装命令即可升级到最新版（`dsh plugin` 把参数转给 pnpm，`add` 会重新解析到仓库最新提交）。
+
 ## 工具一览
 
 ### 免费（无需配置）
