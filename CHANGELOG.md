@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 (2026-10-24)
+
+hhxg.top 2026-10-23 起选股数据会员独享：全市场指标全表（`quant_signal_pool`）与筛选快照（`screen_snapshot`）不再发布文件，`datasets.json` 里这两条不再给 urls，标 `access: "member"`、`delivery: "screen_stocks"`。本版只改文案与目录标注，工具名、参数与调用的服务端工具不变。
+
+- **修正** `hhxg_strategy_signals` 描述：不再指引用 `hhxg_query_dataset(dataset_id="quant_signal_pool")` 取全表下载地址（该地址已停止发布）；不能作为预设的 4 个策略改为提示在 MCP 客户端用 `screen_stocks(filters=...)` 自行筛选比较。
+- **修正** `hhxg_datasets`：会员专属的全市场宽表在「可 query」一栏标「筛选」（只能经策略筛选取数），表尾说明不再写「需直接下载」。
+
 ## 0.3.0 (2026-10-13)
 
 hhxg MCP server 0.3.0 把工具从 15 个收敛到 7 个，本版跟进：VIP 工具只调用服务端的正式工具。工具名与原有参数不变。
@@ -7,7 +14,7 @@ hhxg MCP server 0.3.0 把工具从 15 个收敛到 7 个，本版跟进：VIP �
 - **改道** `hhxg_strategy_signals`：由 `get_strategy_signals` 改调 `screen_stocks`（`strategy_id` 作为策略预设 `preset` 传入）。行为差异：
   - 以前返回全市场指标全表的 CSV 直链和 pandas 过滤建议，要自己下载再筛；现在直接返回命中的个股（默认 20 条，新增可选参数 `limit` 1-100）。
   - 12 个策略标识里 8 个可用：`limit_up` / `volume_breakout` / `low_volume_consolidation` / `nineturn_buy` / `nineturn_sell` / `kdj_overbought` / `kdj_oversold` / `crash_warning`。
-  - 另 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，返回说明文字（`PRESET_NOT_SUPPORTED`）。全表仍可取：`hhxg_query_dataset(dataset_id="quant_signal_pool")` 会给出下载地址。
+  - 另 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，返回说明文字（`PRESET_NOT_SUPPORTED`）。全表仍可取：`hhxg_query_dataset(dataset_id="quant_signal_pool")` 会给出下载地址（2026-10-23 起该地址停止发布，见 0.3.1）。
   - 未知的 `strategy_id` 以前只返回数据集地址，现在返回参数错误说明；`strategy_id` 为空时在本地提示可用预设，不发请求。
   - 站点查询服务离线时，部分预设会报错（`PRESET_UNAVAILABLE`），稍后重试即可。
 - **改道** `hhxg_stock_alerts`：由 `get_stock_alerts_history` 改调 `query_dataset`（`dataset_id="stock_alerts_history"`，股票代码作为 `key`）。返回的数据字段不变（`stock_code` / `name` / `coverage` / `window_days` / `total` / `alerts` / `hint`）；`stock_code` 为空时在本地提示，不发请求。

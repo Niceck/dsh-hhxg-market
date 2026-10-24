@@ -33,7 +33,7 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 | `hhxg_calendar` | A股日历：交易日 / 交割日 / 财报披露 / 限售解禁 |
 | `hhxg_sentiment` | 近 7 交易日市场情绪：涨停家数 / 最高连板 / 连板分布 / 热门行业与概念 |
 | `hhxg_themes` | 当日题材概念热度榜 TOP 30（游资参与 / 涨停数 / 涨停占比） |
-| `hhxg_datasets` | 全部开放数据集目录（id / 分类 / 格式 / 更新频率 / 能否用 `hhxg_query_dataset` 查询），`hhxg_query_dataset` 的 id 发现入口 |
+| `hhxg_datasets` | 全部数据集目录（id / 分类 / 格式 / 更新频率 / 能否用 `hhxg_query_dataset` 查询；会员专属的全市场宽表标「筛选」，不提供下载），`hhxg_query_dataset` 的 id 发现入口 |
 
 数据每个交易日盘后约 20:00 更新（快讯每小时）；非交易日返回最近一个交易日。
 
@@ -63,7 +63,7 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 
 未填 Token 时 VIP 工具仍会注册为引导占位（调用返回开通指引），不影响免费工具。设 `enableVipTools: false` 可整体关闭 VIP 工具注册。
 
-`hhxg_strategy_signals` 的 12 个策略标识里有 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。要算这 4 个，用 `hhxg_query_dataset(dataset_id="quant_signal_pool")` 取全市场指标全表的下载地址后自行计算。
+`hhxg_strategy_signals` 的 12 个策略标识里有 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；需要自定义条件时，可在 MCP 客户端直接调 `screen_stocks(filters=...)` 按「字段 对 常量」筛选后自行比较。
 
 **版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，保留到 2026-11-30，请在此之前升级。
 

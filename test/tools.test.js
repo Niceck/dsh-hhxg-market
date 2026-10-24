@@ -82,8 +82,10 @@ test('策略信号改走 screen_stocks 的策略预设：strategy_id → preset�
 
   // 描述：不再承诺 CSV 直链；写清 8 个可用预设，另 4 个会返回 PRESET_NOT_SUPPORTED
   assert.ok(!signals.description.includes('直链'), '结果直接返回，不再是 CSV 直链')
-  // 不能作为预设的 4 个策略要给出路：全表仍可经 hhxg_query_dataset 拿到下载地址
-  assert.match(signals.description, /hhxg_query_dataset\(dataset_id="quant_signal_pool"\)/)
+  // 全市场指标全表 2026-10-23 起会员独享、不再发布：不得再指引去取下载地址，改给 screen_stocks(filters) 出路
+  assert.ok(!/hhxg_query_dataset\(dataset_id="quant_signal_pool"\)/.test(signals.description), '全表不再经 query_dataset 下载')
+  assert.match(signals.description, /quant_signal_pool）为会员数据，不提供下载地址/)
+  assert.match(signals.description, /screen_stocks\(filters=/)
   for (const id of [...USABLE_PRESETS, ...UNSUPPORTED_PRESETS]) assert.ok(signals.description.includes(id), id)
   assert.match(signals.description, /8 个/)
   assert.match(signals.description, /PRESET_NOT_SUPPORTED/)
@@ -206,7 +208,7 @@ test('数据集目录：JSON 与 300KB 以内的 CSV 标可查，超限与只有
   assert.ok(!/46/.test(datasets.description), '数据集数量会变，描述里不写死')
   const at = (path) => ({ latest: `https://hhxg.top/${path}` })
   const payload = {
-    dataset_count: 6,
+    dataset_count: 8,
     datasets: [
       { id: 'small_json', category: '情绪', title: '小 JSON', format: 'json', size_bytes: 2000, urls: at('a.json') },
       { id: 'small_csv', category: '游资', title: '小 CSV', format: 'csv', size_bytes: 300 * 1024, urls: at('a.csv') },
@@ -214,6 +216,10 @@ test('数据集目录：JSON 与 300KB 以内的 CSV 标可查，超限与只有
       { id: 'big_json', category: '公告', title: '大 JSON', format: 'json', size_bytes: 1268200, urls: at('b.json') },
       { id: 'monthly_csv', category: '两融', title: '按月 CSV', format: 'csv', urls: { history_pattern: 'https://hhxg.top/m/YYYYMM.csv' } },
       { id: 'xml_feed', category: '其他', title: 'XML', format: 'xml', size_bytes: 100, urls: at('f.xml') },
+      // 会员专属宽表：清单不给 urls，只能经策略筛选
+      { id: 'quant_signal_pool', category: '策略', title: '全市场宽表', format: 'csv', size_bytes: 4_000_000, tier: 'trial', access: 'member', delivery: 'screen_stocks', urls: {} },
+      // 会员 KB：清单保留 latest，经 query_dataset 取（插件的 query 本就要 VIP Token）
+      { id: 'kb_stock_indicators', category: '策略', title: '指标榜', format: 'json', size_bytes: 3000, tier: 'trial', access: 'member', delivery: 'query_dataset', urls: at('k.json') },
     ],
   }
   const origFetch = globalThis.fetch
@@ -231,8 +237,12 @@ test('数据集目录：JSON 与 300KB 以内的 CSV 标可查，超限与只有
   assert.equal(mark('big_json'), '过大')
   assert.equal(mark('monthly_csv'), '—')
   assert.equal(mark('xml_feed'), '—')
+  assert.equal(mark('quant_signal_pool'), '筛选')
+  assert.equal(mark('kb_stock_indicators'), '✓')
+  assert.match(out, /「筛选」是会员专属的全市场宽表，不提供下载/)
+  assert.ok(!out.includes('需直接下载'), '「—」不再一律指引直接下载')
   assert.ok(!out.includes('仅 JSON'), '「仅 JSON 可 query」已过期')
-  assert.match(out, /6\/6 个/)
+  assert.match(out, /8\/8 个/)
 })
 
 test('未配置 token 的占位文案含开通与配置指引', () => {
