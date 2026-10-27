@@ -1,5 +1,7 @@
 # Changelog
 
+> **服务端变更（2026-10-27）**：hhxg MCP server 0.5.0 删除了 0.3.0 起保留的 8 个旧工具别名（原定 2026-11-30）。本插件 0.3.0 及以上不受影响；0.2.x 的 `hhxg_strategy_signals` / `hhxg_stock_alerts` 已失效，请升级。
+
 ## 0.4.0 (2026-10-27)
 
 hhxg MCP server 0.4.0 新增 Max 会员专属的盘中实时工具 `get_realtime`，本版跟进。原有工具名、参数与行为不变。

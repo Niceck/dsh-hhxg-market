@@ -21,7 +21,7 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 dsh plugin --profile web add @hhxg/dsh-hhxg-market
 ```
 
-> **⚠️ 仍在用 0.2.x 的请在 2026-11-30 前升级**：0.2.x 的 `hhxg_strategy_signals` / `hhxg_stock_alerts` 调用的服务端旧工具名只保留到 2026-11-30，之后这两个工具会失效（其余工具不受影响）。重新执行上面的 GitHub 安装命令即可升级到最新版（`dsh plugin` 把参数转给 pnpm，`add` 会重新解析到仓库最新提交）。
+> **⚠️ 仍在用 0.2.x 的请升级**：0.2.x 的 `hhxg_strategy_signals` / `hhxg_stock_alerts` 调用的服务端旧工具名已于 2026-10-27 下线（原定 2026-11-30，提前），这两个工具现在会报「工具已下线」（其余工具不受影响）。重新执行上面的 GitHub 安装命令即可升级到最新版（`dsh plugin` 把参数转给 pnpm，`add` 会重新解析到仓库最新提交）。
 
 ## 工具一览
 
@@ -68,7 +68,7 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 
 `hhxg_strategy_signals` 的 12 个策略标识里有 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；需要自定义条件时，可在 MCP 客户端直接调 `screen_stocks(filters=...)` 按「字段 对 常量」筛选后自行比较。
 
-**版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`，0.4.0 起加 `get_realtime`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，保留到 2026-11-30，请在此之前升级。
+**版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`，0.4.0 起加 `get_realtime`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，已于 2026-10-27 下线（服务端 0.5.0），0.2.x 的这两个工具已失效，请升级。
 
 ### 零代码替代方案（VIP 用户）
 

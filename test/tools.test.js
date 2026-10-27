@@ -45,7 +45,7 @@ test('VIP 工具 buildArgs：股票代码与边界收敛', () => {
   assert.deepEqual(query.buildArgs({ dataset_id: 'xuangu', limit: 9999 }), { dataset_id: 'xuangu' })
 })
 
-// 服务端 0.3.0 把 8 个旧工具改成了只保留到 2026-11-30 的别名：插件不得再调用它们
+// 服务端的 8 个旧工具名 0.3.0 起降为别名、2026-10-27 起已下线：插件不得再调用它们
 const LEGACY_MCP_TOOLS = [
   'get_dataset', 'get_history', 'get_anomalies', 'get_sentiment', 'get_themes_ranking',
   'get_stock_alerts_history', 'get_strategy_signals', 'search_news',
