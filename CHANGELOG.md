@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 (2026-10-27)
+
+hhxg MCP server 0.4.0 新增 Max 会员专属的盘中实时工具 `get_realtime`，本版跟进。原有工具名、参数与行为不变。
+
+- **新增** `hhxg_realtime`（VIP 工具 5 → 6 个）：盘中实时数据，交易日约 1 分钟一帧，盘后为当日收盘帧。
+  - `view=market`：涨跌家数、涨停 / 跌停 / 炸板家数与炸板率、成交额，加涨停池 / 炸板池 / 跌停池与连板晋级率（`pool_limit` 1-50）。
+  - `view=quotes`：`codes`（最多 30 只）的最新价、涨跌幅、量比、封单、开高低等，`include` 选 `daily` / `weekly` / `monthly` 指标（按最新价把今天当未走完的 K 线计算）。`codes` 传成 `"600519,000001"` 这样的字符串也会拆成数组。
+  - `view=screen`：全市场按 `filters [{field, op, value}]` 筛选（最多 8 条），`sort` / `fields` / `limit`（1-50）/ `exclude_st`；周 / 月指标字段名加前缀「周」「月」。
+  - `view=fields`：可用字段、取值说明与示例。
+  - 每个结果带 `frame.status`（live 盘中 / lunch_break 午休 / closed 收盘帧 / previous_session 非今日 / stale 延迟）。
+  - 只转发所选 view 的参数；`view` 缺失或非法、`quotes` 缺 `codes` 时在本地给说明，不发请求。
+- **新增** 实时相关的业务性答复渲染成可读文本，不当作工具故障：
+  - `REALTIME_MAX_REQUIRED` 显示为「需要 Max：…」并附升级地址。存量 Pro 持有效 Token 调 `hhxg_realtime` 会遇到它（接口保护期不含实时数据）。
+  - `RT_SYNCING` / `RT_INDICATORS_STALE` / `RT_INDICATORS_UNAVAILABLE` / `RT_NAMES_UNAVAILABLE` 显示为「暂未就绪：…」，`RT_SYNCING` 附「约 N 秒后可重试」。
+  - `RESULT_TOO_LARGE` 归入「参数有误：…」（请减少 codes / fields / limit）。
+  - 实时采集离线的 `RT_UNAVAILABLE` 仍按故障抛出。
+- **修正** 开通指引：2026-10-27 起 MCP Token 只签给 Max 会员（月付 ¥99 / 年付 ¥999），此前开通的 Pro 在原到期日前仍可用；Token 有效期跟随会员到期（不再是固定 30 天）。
+
 ## 0.3.1 (2026-10-24)
 
 hhxg.top 2026-10-23 起选股数据会员独享：全市场指标全表（`quant_signal_pool`）与筛选快照（`screen_snapshot`）不再发布文件，`datasets.json` 里这两条不再给 urls，标 `access: "member"`、`delivery: "screen_stocks"`。本版只改文案与目录标注，工具名、参数与调用的服务端工具不变。

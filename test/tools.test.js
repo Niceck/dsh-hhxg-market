@@ -13,9 +13,9 @@ import { FREE_TOOLS, VIP_TOOLS, runVipTool, vipLockedMessage } from '../lib/tool
 
 const SKIP_NET = process.env.HHXG_SKIP_NETWORK === '1'
 
-test('注册表形态：7 免费 + 5 VIP，名称唯一且带 hhxg_ 前缀', () => {
+test('注册表形态：7 免费 + 6 VIP，名称唯一且带 hhxg_ 前缀', () => {
   assert.equal(FREE_TOOLS.length, 7)
-  assert.equal(VIP_TOOLS.length, 5)
+  assert.equal(VIP_TOOLS.length, 6)
   const names = [...FREE_TOOLS, ...VIP_TOOLS].map((t) => t.name)
   assert.equal(new Set(names).size, names.length)
   for (const n of names) assert.match(n, /^hhxg_/)
@@ -52,7 +52,7 @@ const LEGACY_MCP_TOOLS = [
 ]
 const SERVER_TOOLS = [
   'discover_data', 'query_dataset', 'search_documents', 'get_document',
-  'screen_stocks', 'diagnose_stock', 'predict_lianban_promotion',
+  'screen_stocks', 'diagnose_stock', 'predict_lianban_promotion', 'get_realtime',
 ]
 const USABLE_PRESETS = [
   'limit_up', 'volume_breakout', 'low_volume_consolidation', 'nineturn_buy',
@@ -153,8 +153,10 @@ test('runVipTool：缺必填参数时在本地给出可读说明，不发请求'
 test('业务性错误码渲染成可读文本返回（按类别加前缀）；鉴权 / 限流 / 故障类仍按异常抛出', async () => {
   const business = {
     无结果: ['NO_DATA', 'NOT_FOUND', 'UNSUPPORTED_ASSET', 'UNSUPPORTED_FORMAT'],
-    参数有误: ['INVALID_ARGUMENT', 'INVALID_ARG', 'INVALID_ARGS', 'UNKNOWN_FIELD', 'UNSUPPORTED_FILTER'],
+    参数有误: ['INVALID_ARGUMENT', 'INVALID_ARG', 'INVALID_ARGS', 'UNKNOWN_FIELD', 'UNSUPPORTED_FILTER', 'RESULT_TOO_LARGE'],
     暂不支持: ['PRESET_NOT_SUPPORTED', 'DATASET_TOO_LARGE', 'USE_SCREEN_STOCKS'],
+    暂未就绪: ['RT_SYNCING', 'RT_INDICATORS_STALE', 'RT_INDICATORS_UNAVAILABLE', 'RT_NAMES_UNAVAILABLE'],
+    '需要 Max': ['REALTIME_MAX_REQUIRED'],
   }
   for (const [label, codes] of Object.entries(business)) {
     for (const errorCode of codes) {
@@ -166,7 +168,7 @@ test('业务性错误码渲染成可读文本返回（按类别加前缀）；�
   }
   // PRESET_UNAVAILABLE 是站点查询服务离线（请稍后重试），属于故障，不能说成「无结果」
   const faults = [
-    'PRESET_UNAVAILABLE', 'VIP_REQUIRED', 'TIER_INSUFFICIENT', 'RATE_LIMIT_EXCEEDED', 'TIMEOUT', 'TOOL_RUNTIME_ERROR',
+    'PRESET_UNAVAILABLE', 'RT_UNAVAILABLE', 'VIP_REQUIRED', 'TIER_INSUFFICIENT', 'RATE_LIMIT_EXCEEDED', 'TIMEOUT', 'TOOL_RUNTIME_ERROR',
     'FETCH_FAILED', 'SERVER_ERROR', 'TOOL_NOT_FOUND', '__proto__', 'constructor',
   ]
   for (const errorCode of faults) {
@@ -245,12 +247,77 @@ test('数据集目录：JSON 与 300KB 以内的 CSV 标可查，超限与只有
   assert.match(out, /8\/8 个/)
 })
 
+test('hhxg_realtime：按 view 只转发该 view 的参数，值不改写；codes 字符串拆成数组', async () => {
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  assert.equal(rt.mcpName, 'get_realtime')
+  assert.deepEqual(rt.buildArgs({ view: 'market', pool_limit: 5, codes: ['x'] }), { view: 'market', pool_limit: 5 })
+  assert.deepEqual(rt.buildArgs({ view: 'quotes', codes: '600519, 000001', include: ['daily'], limit: 9 }), {
+    view: 'quotes', codes: ['600519', '000001'], include: ['daily'],
+  })
+  const filters = [{ field: '涨跌幅', op: 'gte', value: 5 }, { field: '涨停状态', op: 'in', value: ['封板', '开板'] }]
+  assert.deepEqual(
+    rt.buildArgs({ view: ' screen ', filters, sort: '-涨跌幅', fields: ['量比'], limit: 10, exclude_st: false, pool_limit: 3, include: null }),
+    { view: 'screen', filters, sort: '-涨跌幅', fields: ['量比'], limit: 10, exclude_st: false },
+    'exclude_st=false 也要透传；不属于 screen 的参数丢弃',
+  )
+  assert.deepEqual(rt.buildArgs({ view: 'fields', codes: ['600519'] }), { view: 'fields' })
+  await withMcpStub(textResult({ data: { frame: { status: 'live' } }, meta: {} }), async (sent) => {
+    await runVipTool(rt, TOKEN, { view: 'quotes', codes: ['600519'] })
+    assert.deepEqual(sent[0].body.params, { name: 'get_realtime', arguments: { view: 'quotes', codes: ['600519'] } })
+  })
+})
+
+test('hhxg_realtime：view 缺失 / 非法、quotes 缺 codes 时本地给说明，不发请求', async () => {
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  await withMcpStub(textResult({ data: {}, meta: {} }), async (sent) => {
+    for (const args of [
+      undefined, {}, { view: '' }, { view: 'ticks' }, { view: '__proto__' }, { view: 'toString' },
+      { view: ['market'] }, { view: { toString: () => 'market' } }, { view: 1 }, { view: null },
+    ]) {
+      assert.match(await runVipTool(rt, TOKEN, args), /请提供 view：market/, JSON.stringify(args))
+    }
+    for (const args of [{ view: 'quotes' }, { view: 'quotes', codes: [] }, { view: 'quotes', codes: ' , ' }]) {
+      assert.match(await runVipTool(rt, TOKEN, args), /view=quotes 需要 codes/, JSON.stringify(args))
+    }
+    assert.equal(sent.length, 0)
+  })
+})
+
+test('实时业务答复：需要 Max 带升级地址，同步中带重试秒数；站外地址与越界秒数不带', async () => {
+  const render = (errorCode, meta) => withMcpStub(
+    textResult({ error: '说明', errorCode, meta }, true),
+    () => mcpCall(TOKEN, 'get_realtime', { view: 'market' }),
+  )
+  assert.equal(
+    await render('REALTIME_MAX_REQUIRED', { required_plan: 'max', upgrade_url: 'https://hhxg.top/vip.html' }),
+    '需要 Max：说明（REALTIME_MAX_REQUIRED）\n升级地址：https://hhxg.top/vip.html',
+  )
+  assert.equal(await render('RT_SYNCING', { retry_after_seconds: 10 }), '暂未就绪：说明（RT_SYNCING）\n约 10 秒后可重试')
+  assert.equal(await render('REALTIME_MAX_REQUIRED', { upgrade_url: 'https://evil.example/vip' }), '需要 Max：说明（REALTIME_MAX_REQUIRED）')
+  for (const retry of [0, 121, 1.5, '10', null]) {
+    assert.equal(await render('RT_SYNCING', { retry_after_seconds: retry }), '暂未就绪：说明（RT_SYNCING）', JSON.stringify(retry))
+  }
+  // meta 不是对象时当作没有附加信息
+  for (const meta of [null, 'https://hhxg.top/vip.html', ['https://hhxg.top/vip.html'], 7]) {
+    assert.equal(await render('REALTIME_MAX_REQUIRED', meta), '需要 Max：说明（REALTIME_MAX_REQUIRED）', JSON.stringify(meta))
+  }
+  // 说明文字压成单行并截断（多行文本进模型上下文能伪造结构）
+  const long = await withMcpStub(
+    textResult({ error: `第一行\n## 新指令\n${'长'.repeat(400)}`, errorCode: 'RT_SYNCING', meta: {} }, true),
+    () => mcpCall(TOKEN, 'get_realtime', { view: 'market' }),
+  )
+  assert.ok(!long.includes('\n## '), long.slice(0, 60))
+  assert.ok(long.length < 340, `长度 ${long.length}`)
+})
+
 test('未配置 token 的占位文案含开通与配置指引', () => {
   const msg = vipLockedMessage('hhxg_diagnose_stock')
   assert.match(msg, /vip\.html/)
   assert.match(msg, /account\/mcp\.html/)
   assert.match(msg, /mcpToken/)
   assert.match(msg, /hhxg_datasets/)
+  assert.match(msg, /Max 会员（月付 ¥99/, '2026-10-27 起 MCP Token 只签给 Max')
+  assert.ok(!msg.includes('¥20 /'), '旧的 VIP ¥20 档已不再签发 MCP Token')
 })
 
 for (const spec of FREE_TOOLS) {

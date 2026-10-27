@@ -5,7 +5,7 @@
 把 A股日报快照、财经快讯、融资融券、市场情绪、题材热度等量化数据变成 dsh Agent 的原生工具——问一句"今天市场情绪怎么样"，模型自己调工具拿真实数据回答。
 
 - **7 个免费工具**：零配置、无需注册，安装即用
-- **5 个 VIP 工具**：个股综合诊断、量化策略信号、连板晋级预测等，填入 [MCP Token](https://hhxg.top/account/mcp.html) 解锁
+- **6 个 VIP 工具**：个股综合诊断、量化策略信号、连板晋级预测、盘中实时行情与指标（Max 专属）等，填入 [MCP Token](https://hhxg.top/account/mcp.html) 解锁
 
 ## 安装
 
@@ -48,11 +48,12 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
 | `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id 与是否可查） |
+| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行）；`view=fields` 可用字段与示例。结果带 `frame.status`（盘中 / 午休 / 收盘 / 非今日 / 延迟） |
 
 **解锁步骤**：
 
-1. 到 [hhxg.top/vip.html](https://hhxg.top/vip.html) 开通 VIP（月度 ¥20 / 年度 ¥200）
-2. 到 [hhxg.top/account/mcp.html](https://hhxg.top/account/mcp.html) 生成 MCP Token（30 天有效）
+1. 到 [hhxg.top/vip.html](https://hhxg.top/vip.html) 开通 Max 会员（月付 ¥99 / 年付 ¥999）。2026-10-27 起 MCP Token 只签给 Max；此前开通的 Pro 在原到期日前仍可用除 `hhxg_realtime` 以外的 VIP 工具（调用 `hhxg_realtime` 会返回「需要 Max」的说明）
+2. 到 [hhxg.top/account/mcp.html](https://hhxg.top/account/mcp.html) 生成 MCP Token（有效期跟随会员到期）
 3. 把 Token 填入插件配置的 `mcpToken` 字段：
 
 ```yaml
@@ -67,11 +68,11 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 
 `hhxg_strategy_signals` 的 12 个策略标识里有 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；需要自定义条件时，可在 MCP 客户端直接调 `screen_stocks(filters=...)` 按「字段 对 常量」筛选后自行比较。
 
-**版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，保留到 2026-11-30，请在此之前升级。
+**版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`，0.4.0 起加 `get_realtime`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，保留到 2026-11-30，请在此之前升级。
 
 ### 零代码替代方案（VIP 用户）
 
-dsh 原生支持 MCP。不装本插件、或想要全部 7 个 MCP 工具 + resources + prompts，可直接把 hhxg MCP server 挂进 dsh 的 MCP 配置：
+dsh 原生支持 MCP。不装本插件、或想要全部 8 个 MCP 工具 + resources + prompts，可直接把 hhxg MCP server 挂进 dsh 的 MCP 配置：
 
 ```
 URL:    https://hhxg.top/mcp/rpc
