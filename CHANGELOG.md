@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 (2026-11-01)
+
+文案纠错 + 日 K 参数透传。工具名、数量（7 免费 + 6 VIP）与行为不变。
+
+- **修正** 未配置 Token 时的占位文案与 `cordis.patch.yml` 头注释：dsh 目前不渲染第三方插件的配置项，**没有「设置 → 插件」界面可填**，正确做法是在 profile 的 `cordis.patch.yml` 里按 id `update` config 后重启 dsh（README 此前已是这个写法，占位文案与注释是错的）。
+- **新增** `hhxg_realtime` 的 `view=kline`（日 K 序列，服务端 hhxg MCP `get_realtime` 同步新增，上线后可用）：`codes`（最多 5 只）、`period`（目前只支持 `day`）、`bars`（1-260，默认 120，`codes × bars ≤ 1000`）、`adj`（`qfq` 前复权 / `none`）、`include_live`（是否附今天这根未走完的 K，默认 true）。`rows` 只含已完成交易日（Tushare 不复权日线每晚同步，单位 元 / 股 / 元，缺值 null），`live` 单独给出今天的 bar 并带 `comparable`（今日除权时为 false，不要与前复权历史直接拼接）。分钟 K **不做**：每分钟快照差分还原不了区间高低，不伪造。
+- **新增** `kline` 缺 `codes` 时本地给说明，不发请求（与 `quotes` 同）。
+
+> **服务端变更（2026-10-28）**：`screen_stocks` 的 `macd_golden_cross` 改为可用预设（按派生列「日MACD金叉」筛，口径与原 pandas 表达式相同），可用预设 8 → 9 个，不支持的剩 3 个。插件行为不变（strategy_id 原样透传），`hhxg_strategy_signals` 的工具说明已同步，随下一版发布。
+
 > **服务端变更（2026-10-27）**：hhxg MCP server 0.5.0 删除了 0.3.0 起保留的 8 个旧工具别名（原定 2026-11-30）。本插件 0.3.0 及以上不受影响；0.2.x 的 `hhxg_strategy_signals` / `hhxg_stock_alerts` 已失效，请升级。
 
 ## 0.4.0 (2026-10-27)

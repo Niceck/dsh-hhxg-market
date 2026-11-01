@@ -56,9 +56,9 @@ const SERVER_TOOLS = [
 ]
 const USABLE_PRESETS = [
   'limit_up', 'volume_breakout', 'low_volume_consolidation', 'nineturn_buy',
-  'nineturn_sell', 'kdj_overbought', 'kdj_oversold', 'crash_warning',
+  'nineturn_sell', 'kdj_overbought', 'kdj_oversold', 'crash_warning', 'macd_golden_cross',
 ]
-const UNSUPPORTED_PRESETS = ['oversold_rebound', 'macd_golden_cross', 'macd_death_cross', 'distribution']
+const UNSUPPORTED_PRESETS = ['oversold_rebound', 'macd_death_cross', 'distribution']
 
 test('VIP 工具只调用服务端正式工具，不再调用已弃用的旧名', () => {
   for (const spec of VIP_TOOLS) {
@@ -80,16 +80,16 @@ test('策略信号改走 screen_stocks 的策略预设：strategy_id → preset�
   // 未知 id 原样交给服务端判（服务端返回可读的参数错误），不在插件里另维护一份合法值校验
   assert.deepEqual(signals.buildArgs({ strategy_id: 'not_a_preset' }), { preset: 'not_a_preset' })
 
-  // 描述：不再承诺 CSV 直链；写清 8 个可用预设，另 4 个会返回 PRESET_NOT_SUPPORTED
+  // 描述：不再承诺 CSV 直链；写清 9 个可用预设，另 3 个会返回 PRESET_NOT_SUPPORTED
   assert.ok(!signals.description.includes('直链'), '结果直接返回，不再是 CSV 直链')
   // 全市场指标全表 2026-10-23 起会员独享、不再发布：不得再指引去取下载地址，改给 screen_stocks(filters) 出路
   assert.ok(!/hhxg_query_dataset\(dataset_id="quant_signal_pool"\)/.test(signals.description), '全表不再经 query_dataset 下载')
   assert.match(signals.description, /quant_signal_pool）为会员数据，不提供下载地址/)
   assert.match(signals.description, /screen_stocks\(filters=/)
   for (const id of [...USABLE_PRESETS, ...UNSUPPORTED_PRESETS]) assert.ok(signals.description.includes(id), id)
-  assert.match(signals.description, /8 个/)
+  assert.match(signals.description, /9 个/)
   assert.match(signals.description, /PRESET_NOT_SUPPORTED/)
-  const [usablePart, unsupportedPart] = signals.description.split('PRESET_NOT_SUPPORTED')[0].split('另 4 个')
+  const [usablePart, unsupportedPart] = signals.description.split('PRESET_NOT_SUPPORTED')[0].split('另 3 个')
   for (const id of USABLE_PRESETS) assert.ok(usablePart.includes(id), `${id} 应列在可用预设里`)
   for (const id of UNSUPPORTED_PRESETS) assert.ok(unsupportedPart.includes(id), `${id} 应列在不可用预设里`)
 })
@@ -261,6 +261,13 @@ test('hhxg_realtime：按 view 只转发该 view 的参数，值不改写；code
     'exclude_st=false 也要透传；不属于 screen 的参数丢弃',
   )
   assert.deepEqual(rt.buildArgs({ view: 'fields', codes: ['600519'] }), { view: 'fields' })
+  // 日 K：只带 kline 的参数，codes 同样接受逗号字符串；值不改写（越界由服务端判）
+  assert.deepEqual(
+    rt.buildArgs({ view: 'kline', codes: '600519,000001', period: 'day', bars: 60, adj: 'none', include_live: false, include: ['daily'], limit: 5 }),
+    { view: 'kline', codes: ['600519', '000001'], period: 'day', bars: 60, adj: 'none', include_live: false },
+  )
+  assert.deepEqual(rt.parameters.period.enum, ['day'])
+  assert.deepEqual(rt.parameters.adj.enum, ['none', 'qfq'])
   await withMcpStub(textResult({ data: { frame: { status: 'live' } }, meta: {} }), async (sent) => {
     await runVipTool(rt, TOKEN, { view: 'quotes', codes: ['600519'] })
     assert.deepEqual(sent[0].body.params, { name: 'get_realtime', arguments: { view: 'quotes', codes: ['600519'] } })
@@ -277,7 +284,10 @@ test('hhxg_realtime：view 缺失 / 非法、quotes 缺 codes 时本地给说明
       assert.match(await runVipTool(rt, TOKEN, args), /请提供 view：market/, JSON.stringify(args))
     }
     for (const args of [{ view: 'quotes' }, { view: 'quotes', codes: [] }, { view: 'quotes', codes: ' , ' }]) {
-      assert.match(await runVipTool(rt, TOKEN, args), /view=quotes 需要 codes/, JSON.stringify(args))
+      assert.match(await runVipTool(rt, TOKEN, args), /view=quotes 需要 codes.*最多 30 只/, JSON.stringify(args))
+    }
+    for (const args of [{ view: 'kline' }, { view: 'kline', codes: [] }]) {
+      assert.match(await runVipTool(rt, TOKEN, args), /view=kline 需要 codes.*最多 5 只/, JSON.stringify(args))
     }
     assert.equal(sent.length, 0)
   })
@@ -308,6 +318,13 @@ test('实时业务答复：需要 Max 带升级地址，同步中带重试秒数
   )
   assert.ok(!long.includes('\n## '), long.slice(0, 60))
   assert.ok(long.length < 340, `长度 ${long.length}`)
+})
+
+test('未配置 token 的占位文案写的是 cordis.patch.yml 写法，不再指向不存在的设置界面', () => {
+  const text = vipLockedMessage('hhxg_realtime')
+  assert.match(text, /cordis\.patch\.yml/)
+  assert.match(text, /id: hhxg-market/)
+  assert.doesNotMatch(text, /设置 → 插件/)
 })
 
 test('未配置 token 的占位文案含开通与配置指引', () => {

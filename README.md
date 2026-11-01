@@ -9,16 +9,16 @@
 
 ## 安装
 
-直接从 GitHub 安装：
-
-```bash
-dsh plugin --profile web add github:Niceck/dsh-hhxg-market
-```
-
-或从 npm（发布后）：
+从 npm 安装（推荐，2026-11-01 起发布为 [`@hhxg/dsh-hhxg-market`](https://www.npmjs.com/package/@hhxg/dsh-hhxg-market)）：
 
 ```bash
 dsh plugin --profile web add @hhxg/dsh-hhxg-market
+```
+
+或直接从 GitHub 安装（备选，解析到仓库最新提交）：
+
+```bash
+dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 ```
 
 > **⚠️ 仍在用 0.2.x 的请升级**：0.2.x 的 `hhxg_strategy_signals` / `hhxg_stock_alerts` 调用的服务端旧工具名已于 2026-10-27 下线（原定 2026-11-30，提前），这两个工具现在会报「工具已下线」（其余工具不受影响）。重新执行上面的 GitHub 安装命令即可升级到最新版（`dsh plugin` 把参数转给 pnpm，`add` 会重新解析到仓库最新提交）。
@@ -44,20 +44,20 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 | 工具 | 说明 |
 |---|---|
 | `hhxg_diagnose_stock` | 个股综合诊断：日/周/月技术指标、异动评级、两融趋势、龙虎榜、涨停、大宗、公告、概念 |
-| `hhxg_strategy_signals` | 按量化策略预设筛选全市场股票，直接返回命中的个股（8 个预设：涨停 / 放量突破 / 缩量整理 / 九转买入 / 九转卖出 / KDJ 超买 / KDJ 超卖 / 暴跌预警），`limit` 1-100 |
+| `hhxg_strategy_signals` | 按量化策略预设筛选全市场股票，直接返回命中的个股（9 个预设：涨停 / 放量突破 / 缩量整理 / 九转买入 / 九转卖出 / KDJ 超买 / KDJ 超卖 / 暴跌预警 / MACD 金叉），`limit` 1-100 |
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
 | `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id 与是否可查） |
-| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行）；`view=fields` 可用字段与示例。结果带 `frame.status`（盘中 / 午休 / 收盘 / 非今日 / 延迟） |
+| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`adj` 前复权 / 不复权）+ 今天这根未走完的 K（`live`，除权日标 `comparable=false`）。结果带 `frame.status`（盘中 / 午休 / 收盘 / 非今日 / 延迟）。分钟 K 不提供（快照差分还原不了区间高低） |
 
 **解锁步骤**：
 
 1. 到 [hhxg.top/vip.html](https://hhxg.top/vip.html) 开通 Max 会员（月付 ¥99 / 年付 ¥999）。2026-10-27 起 MCP Token 只签给 Max；此前开通的 Pro 在原到期日前仍可用除 `hhxg_realtime` 以外的 VIP 工具（调用 `hhxg_realtime` 会返回「需要 Max」的说明）
 2. 到 [hhxg.top/account/mcp.html](https://hhxg.top/account/mcp.html) 生成 MCP Token（有效期跟随会员到期）
-3. 把 Token 填入插件配置的 `mcpToken` 字段：
+3. 把 Token 写进你 profile 的 `cordis.patch.yml`（dsh 目前不渲染第三方插件的配置项，没有设置界面可填；保存后重启 dsh 生效）：
 
 ```yaml
-# 你 profile 的 cordis.patch.yml
+# ~/.dsh/profiles/<profile>/cordis.patch.yml
 - update:
     - id: hhxg-market
       config:
@@ -66,7 +66,7 @@ dsh plugin --profile web add @hhxg/dsh-hhxg-market
 
 未填 Token 时 VIP 工具仍会注册为引导占位（调用返回开通指引），不影响免费工具。设 `enableVipTools: false` 可整体关闭 VIP 工具注册。
 
-`hhxg_strategy_signals` 的 12 个策略标识里有 4 个（`oversold_rebound` / `macd_golden_cross` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；需要自定义条件时，可在 MCP 客户端直接调 `screen_stocks(filters=...)` 按「字段 对 常量」筛选后自行比较。
+`hhxg_strategy_signals` 的 12 个策略标识里有 3 个（`oversold_rebound` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；需要自定义条件时，可在 MCP 客户端直接调 `screen_stocks(filters=...)` 按「字段 对 常量」筛选后自行比较。
 
 **版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`，0.4.0 起加 `get_realtime`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，已于 2026-10-27 下线（服务端 0.5.0），0.2.x 的这两个工具已失效，请升级。
 
@@ -79,7 +79,7 @@ URL:    https://hhxg.top/mcp/rpc
 Header: Authorization: Bearer <你的 MCP Token>
 ```
 
-本插件的价值是：免费工具无 Token 也能用、工具输出针对模型阅读做了格式化、以及和 dsh 配置界面集成。
+本插件的价值是：免费工具无 Token 也能用、工具输出针对模型阅读做了格式化、业务性答复（无数据 / 需要 Max / 参数有误）不会被当成工具故障。
 
 ## 设计约定
 

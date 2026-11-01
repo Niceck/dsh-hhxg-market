@@ -43,7 +43,14 @@ const TEXT_OUTPUT = {
   render: (_args, value) => [{ type: 'text', text: String(value ?? '') }],
 }
 
-test('全部 13 个工具 spec 通过真实 defineTool 编译', { skip: !defineTool && '本机无 dsh SDK' }, () => {
+// CI 里 npm ci 会按 lockfile 装上 peer 的真实 SDK：那里缺 SDK 不是「可跳过」而是环境坏了（Codex 评审）
+const SKIP = !defineTool && (process.env.CI ? false : '本机无 dsh SDK')
+
+test('CI 必须装到真实 dsh SDK（契约测试不得在 CI 静默跳过）', { skip: !process.env.CI && '仅 CI' }, () => {
+  assert.ok(defineTool, 'CI 环境没有 @deepseek-ai/dsh-tools：检查 npm ci / lockfile 的 peer 依赖')
+})
+
+test('全部 13 个工具 spec 通过真实 defineTool 编译', { skip: SKIP }, () => {
   const specs = [...FREE_TOOLS, ...VIP_TOOLS]
   assert.equal(specs.length, 13)
   for (const spec of specs) {
@@ -58,4 +65,15 @@ test('全部 13 个工具 spec 通过真实 defineTool 编译', { skip: !defineT
       `defineTool(${spec.name}) 必须不抛错——否则整个插件在装载时被回滚`,
     )
   }
+})
+
+test('带 presentationMeta 的 output（hhxg_realtime 桌面卡投影）也通过 defineTool 编译', { skip: SKIP }, () => {
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  assert.doesNotThrow(() => defineTool({
+    name: rt.name,
+    description: rt.description,
+    parameters: rt.parameters,
+    output: { ...TEXT_OUTPUT, presentationMeta: () => undefined },
+    async execute() { return '' },
+  }))
 })
