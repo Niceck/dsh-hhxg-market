@@ -124,7 +124,7 @@ test('meta 可用：渲染徽标 + 表格（host 投影 → client 卡片，走�
   assert.deepEqual(tds.slice(0, 4), ['600519.SH', '贵州茅台', '1355.90', '0.44'])
   const badge = find(tree, 'span').find((n) => n.props.className === 'hhxg_badge')
   assert.equal(badge.props['data-status'], 'live')
-  assert.ok(strings(tree).includes('盘中实时'))
+  assert.ok(strings(tree).some((s) => s.startsWith('盘中实时｜帧交易日 2026-10-27')), '徽标可见正文含状态与完整日期')
   assert.ok(strings(tree).includes('价格为盘中最新价'))
   assert.ok(find(tree, 'pre').length === 0, '有表就不显示原文')
 })
@@ -150,4 +150,43 @@ test('回退：无 meta / 版本不认 / isError / 空表 → 原文 pre；渲�
   assert.equal(asText(block({ schema: 1, kind: 'hhxg.realtime', columns: ['a'], rows: exploding })), text)
   // 没有 block：也只是回退，不抛
   assert.doesNotThrow(() => render(node(mod.RealtimeCard, {})))
+})
+
+// ── 0.4.2：徽标可见正文 / 矛盾帧 / 依赖缺失不抛 ────────────────────────────
+
+test('徽标正文显示 host 投影的完整文案（状态 + 帧交易日 + 采集时间），矛盾帧降为 stale；旧版 meta 回退本地标签', () => {
+  const meta = realtimePresentation({ view: 'quotes' }, text)
+  const tree = render(node(mod.RealtimeCard, { block: block(meta) }))
+  const badge = find(tree, 'span').find((n) => n.props.className === 'hhxg_badge')
+  assert.equal(badge.props['data-status'], 'live')
+  assert.equal(badge.children[0], '盘中实时｜帧交易日 2026-10-27｜采集 2026-10-27 10:10', '可见正文，不是 tooltip')
+  const stale = JSON.stringify({ data: { frame: { ...FRAME, is_live: false }, items: [] }, meta: {} })
+  const staleMeta = realtimePresentation({ view: 'quotes' }, stale)
+  const tree2 = render(node(mod.RealtimeCard, { block: { content: [{ type: 'text', text: stale }], isError: false, meta: staleMeta } }))
+  const badge2 = find(tree2, 'span').find((n) => n.props.className === 'hhxg_badge')
+  assert.equal(badge2.props['data-status'], 'stale')
+  assert.match(badge2.children[0], /^非实时·延迟｜帧交易日 2026-10-27/)
+  const legacy = { schema: 1, kind: 'hhxg.realtime', columns: ['a'], rows: [[1]], frame: { status: 'closed', updated_at: '2026-10-30 15:35:01' } }
+  const tree3 = render(node(mod.RealtimeCard, { block: block(legacy) }))
+  const badge3 = find(tree3, 'span').find((n) => n.props.className === 'hhxg_badge')
+  assert.equal(badge3.children[0], '收盘帧')
+  assert.ok(strings(tree3).includes('10-30 15:35'))
+})
+
+test('宿主没有 React / jsx-runtime：factory 不抛，apply 不注册卡片；slots 注册失败也不抛', () => {
+  const broken = registered[0].factory(() => { throw new Error('no react here') })
+  assert.ok(broken.unavailable instanceof Error)
+  const regs = []
+  assert.doesNotThrow(() => broken.apply({ slots: { inject: (_n, fn) => fn(), register: (d, c) => (regs.push({ d, c }), () => {}) } }))
+  assert.equal(regs.length, 0, '依赖缺失时不注册任何 slot')
+  // 正常物化的模块：slots 不可用 / 抛错 → 吞掉，不往上抛
+  assert.doesNotThrow(() => mod.apply({ slots: { inject() { throw new Error('slots down') } } }))
+  assert.doesNotThrow(() => mod.apply({}))
+  assert.equal(mod.unavailable, null)
+  // 宿主把 inject 的回调延后到 slots 就绪后才执行：那时 register 抛错也不能逸出到宿主
+  let deferred = null
+  mod.apply({ slots: { inject(_n, fn) { deferred = fn }, register() { throw new Error('register later') } } })
+  assert.equal(typeof deferred, 'function')
+  assert.doesNotThrow(() => deferred())
+  assert.equal(deferred(), undefined)
 })

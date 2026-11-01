@@ -5,7 +5,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { PRESENTATION_SCHEMA, REALTIME_KIND, realtimePresentation } from '../lib/present.js'
+import { PRESENTATION_SCHEMA, REALTIME_KIND, realtimePresentation, renderRealtimeText } from '../lib/present.js'
 
 const FRAME = { status: 'live', status_text: '盘中实时（约 1 分钟一帧）', trade_date: '20261027', updated_at: '2026-10-27 10:10:01', frame_id: 'x' }
 const envelope = (data) => JSON.stringify({ data, meta: { source: 'query_service' } })
@@ -22,7 +22,15 @@ test('quotes：代码 / 名称 + 行情列成表，带状态徽标与 note', () 
   assert.equal(meta.schema, PRESENTATION_SCHEMA)
   assert.equal(meta.kind, REALTIME_KIND)
   assert.equal(meta.view, 'quotes')
-  assert.deepEqual(meta.frame, { status: 'live', status_text: FRAME.status_text, trade_date: '20261027', updated_at: FRAME.updated_at })
+  assert.deepEqual(meta.frame, {
+    status: 'live',
+    status_text: FRAME.status_text,
+    trade_date: '20261027',
+    updated_at: FRAME.updated_at,
+    is_live: null, // 服务端没给 is_live 时为 null，不猜
+    effective_status: 'live',
+    label: '盘中实时｜帧交易日 2026-10-27｜采集 2026-10-27 10:10',
+  })
   assert.deepEqual(meta.columns, ['代码', '名称', '最新价', '涨跌幅', '量比', '成交额(千元)', '涨停状态', '连板高度'])
   assert.deepEqual(meta.rows, [['600519.SH', '贵州茅台', 1355.9, 0.44, 0.9, 520000, '', 0]])
   assert.equal(meta.truncated, false)
@@ -63,7 +71,7 @@ test('kline：只放第一只的尾部 + 今日未收盘行；多只与更长序
   )
   assert.equal(meta.title, '日 K 600519.SH 贵州茅台（另 1 只见文本）')
   assert.equal(meta.rows.length, 50)
-  assert.deepEqual(meta.rows.at(-1), ['20261027 今日·未收盘', 1, 2, 0.5, 1.6, 50, 500])
+  assert.deepEqual(meta.rows.at(-1), ['20261027 帧K·未收盘', 1, 2, 0.5, 1.6, 50, 500])
   assert.equal(meta.rows[0][0], rows.at(-49)[0])
   assert.equal(meta.truncated, true)
 })

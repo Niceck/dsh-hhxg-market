@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.2 (2026-11-02)
+
+结果可信度与兼容性修复版（外部评估 + Codex 审阅后的批次）。工具名、数量（7 免费 + 6 VIP）不变。
+
+- **时效显式化** `hhxg_realtime` 的结果文本首行标出帧的状态与交易日（如「【非实时·上一交易日｜帧交易日 2026-10-30｜采集 2026-10-30 15:35】不是此刻的实时数据，引用时注明帧日期。」）；`status=live` 但 `is_live=false` 的矛盾帧按非实时处理，绝不显示成实时。web profile 结果卡的徽标改为显示同一段完整文案（host 投影统一生成）。
+- **日 K 可比性语义** 服务端 `get_realtime view=kline` 响应 `schema_version` 升到 2：`live.comparable` 可为 `null`（无法判断：历史缓存落后于帧、个股最后收盘不在上一交易日、缺基准价或交易日历不可用，原因在 `live.reason`），`false` 改为「疑似除权 / 价格基准不一致」而非「确认除权」，新增响应级 `history`（缓存末日、按交易日历算的缺口）。插件文本在 `comparable !== true` 时追加提示行，卡片里帧那天的 K 不再一律标「今日·未收盘」。
+- **本地预检** `view=kline` 的 `codes ≤ 5`、`bars` 1–260 整数、去重后 `codes × bars ≤ 1000`，以及 `view=quotes` 的 `codes ≤ 30`，越界在本地返回「参数有误：…（INVALID_ARG / RESULT_TOO_LARGE）」，不发请求。
+- **Token 来源** 配置 `mcpToken` 留空时读环境变量 `HHXG_MCP_TOKEN`（显式配置非空时以配置为准；日志只记来源不记值）。
+- **client 降级** 宿主未提供 React / jsx-runtime 或 slots 注册失败时，client 半不再抛错，只是不注册结果卡（宿主默认文本视图照常）。
+- **peer 范围** `@deepseek-ai/dsh-tools` 放宽到 `>=0.1.1-rc.1 <0.3.0-0`（严格 semver 下另列出已知的 0.1.7-rc.2 / 0.2.0-rc.1 / 0.2.1-rc.5 / 0.2.2-alpha.2 预发布版本），cordis / schemastery 改为「不低于当前、不跨主版本」；契约测试新增两种预发布匹配模式的范围断言。
+- npm 包 `@hhxg/dsh-hhxg-market` 自 0.4.1 起可用，README 安装段以 npm 为主。
+
 ## 0.4.1 (2026-11-01)
 
 文案纠错 + 日 K 参数透传。工具名、数量（7 免费 + 6 VIP）与行为不变。

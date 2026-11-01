@@ -48,7 +48,7 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
 | `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id 与是否可查） |
-| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`adj` 前复权 / 不复权）+ 今天这根未走完的 K（`live`，除权日标 `comparable=false`）。结果带 `frame.status`（盘中 / 午休 / 收盘 / 非今日 / 延迟）。分钟 K 不提供（快照差分还原不了区间高低） |
+| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`codes × bars ≤ 1000`，`adj` 前复权 / 不复权）+ 实时帧那天未走完的 K（`live`；`comparable` 只有 `true` 才可与历史拼接，`false` 疑似除权 / 基准不一致，`null` 无法判断——缓存滞后、个股停牌或日历不可用，原因见 `live.reason`，缓存状态见 `history`）。结果文本首行标出帧的时效与交易日，并带 `frame.status`（盘中 / 午休 / 收盘 / 非今日 / 延迟）；不是 `live` 就不是此刻的数据。分钟 K 不提供（快照差分还原不了区间高低） |
 
 **解锁步骤**：
 
@@ -64,7 +64,9 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
         mcpToken: "<你的 MCP Token>"
 ```
 
-未填 Token 时 VIP 工具仍会注册为引导占位（调用返回开通指引），不影响免费工具。设 `enableVipTools: false` 可整体关闭 VIP 工具注册。
+从终端启动 dsh 的话也可以不改文件：配置留空，设环境变量 `HHXG_MCP_TOKEN=<你的 MCP Token>`（显式配置非空时以配置为准；GUI 启动的 dsh 不一定继承 shell 环境）。
+
+未填 Token 时 VIP 工具仍会注册为引导占位（调用返回开通指引），不影响免费工具。设 `enableVipTools: false` 可整体关闭 VIP 工具注册（此时环境变量也不会解锁）。
 
 `hhxg_strategy_signals` 的 12 个策略标识里有 3 个（`oversold_rebound` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；需要自定义条件时，可在 MCP 客户端直接调 `screen_stocks(filters=...)` 按「字段 对 常量」筛选后自行比较。
 
@@ -84,7 +86,7 @@ Header: Authorization: Bearer <你的 MCP Token>
 ## 设计约定
 
 - **只读（research-only）**：本插件只提供行情与研究数据，不下单、不划转资金，也不存在任何交易执行接口。
-- **凭证最小暴露**：Token 仅用于请求的 `Authorization` 头，不写盘、不打日志；错误信息经脱敏处理，不回显 Token。Token 本体只存在于你本机的 profile 配置。
+- **凭证最小暴露**：Token 仅用于请求的 `Authorization` 头，不写盘、不打日志（日志只记「来自配置 / 环境变量 / 未配置」）；错误信息经脱敏处理，不回显 Token。Token 本体只存在于你本机的 profile 配置或你自己设置的环境变量里（环境变量对同进程插件与继承环境的子进程可见，不是保险库）。
 - **上游文本消毒**：新闻标题、题材名等第三方文本进入模型上下文前统一清洗（删不可见字符、压平控制字符、断开链接/图片语法），降低数据侧 prompt injection 风险。
 - **免责声明**：所有数据仅供研究参考，不构成投资建议。数据可能存在延迟或缺失，据此操作风险自负。
 
