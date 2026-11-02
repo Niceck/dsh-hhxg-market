@@ -10,7 +10,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { FREE_TOOLS, VIP_TOOLS } from '../lib/tools.js'
-import { realtimePresentation } from '../lib/present.js'
+import { realtimePresentation, STATUS_LABEL } from '../lib/present.js'
 
 // ── 物化 ────────────────────────────────────────────────────────────
 
@@ -171,6 +171,17 @@ test('徽标正文显示 host 投影的完整文案（状态 + 帧交易日 + �
   const badge3 = find(tree3, 'span').find((n) => n.props.className === 'hhxg_badge')
   assert.equal(badge3.children[0], '收盘帧')
   assert.ok(strings(tree3).includes('10-30 15:35'))
+})
+
+test('0.5.1：旧版 meta 的本地回退标签与 host 首行 STATUS_LABEL 逐一相同（previous_session / stale 不再是「非今日 / 延迟」）', () => {
+  for (const [status, expected] of Object.entries(STATUS_LABEL)) {
+    const legacy = { schema: 1, kind: 'hhxg.realtime', columns: ['a'], rows: [[1]], frame: { status } }
+    const tree = render(node(mod.RealtimeCard, { block: block(legacy) }))
+    const badge = find(tree, 'span').find((n) => n.props.className === 'hhxg_badge')
+    assert.equal(badge.children[0], expected, status)
+  }
+  assert.equal(STATUS_LABEL.previous_session, '非实时·上一交易日')
+  assert.equal(STATUS_LABEL.stale, '非实时·延迟')
 })
 
 test('宿主没有 React / jsx-runtime：factory 不抛，apply 不注册卡片；slots 注册失败也不抛', () => {

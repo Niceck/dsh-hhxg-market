@@ -5,7 +5,9 @@
 把 A股日报快照、财经快讯、融资融券、市场情绪、题材热度等量化数据变成 dsh Agent 的原生工具——问一句"今天市场情绪怎么样"，模型自己调工具拿真实数据回答。
 
 - **7 个免费工具**：零配置、无需注册，安装即用
-- **6 个 VIP 工具**：个股综合诊断、条件选股与量化策略预设（可筛字段约 200 个、返回全市场命中数）、连板晋级预测、盘中实时行情与指标（Max 专属）等，填入 [MCP Token](https://hhxg.top/account/mcp.html) 解锁
+- **6 个 VIP 工具**：个股综合诊断、条件选股与量化策略预设（可筛字段约 200 个、返回全市场命中数）、连板晋级预测、盘中实时行情与指标（Max 专属）等，填入 [MCP Token](https://hhxg.top/developer.html#mcp) 解锁
+
+实测记录：[我把选股条件直接「说」给 AI，它不但筛完全市场，还自己设计了 5 套策略](https://zhuanlan.zhihu.com/p/2100516061787570728)（知乎，0.5.0 条件选股的 5 组对话 + 5 套策略逐套计数，含可筛字段分组与限制说明）。
 
 ## 安装
 
@@ -48,12 +50,12 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
 | `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id 与是否可查） |
-| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`codes × bars ≤ 1000`，`adj` 前复权 / 不复权）+ 实时帧那天未走完的 K（`live`；`comparable` 只有 `true` 才可与历史拼接，`false` 疑似除权 / 基准不一致，`null` 无法判断——缓存滞后、个股停牌或日历不可用，原因见 `live.reason`，缓存状态见 `history`）。结果文本首行标出帧的时效与交易日，并带 `frame.status`（盘中 / 午休 / 收盘 / 非今日 / 延迟）；不是 `live` 就不是此刻的数据。分钟 K 不提供（快照差分还原不了区间高低） |
+| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`codes × bars ≤ 1000`，`adj` 前复权 / 不复权）+ 实时帧那天未走完的 K（`live`；`comparable` 只有 `true` 才可与历史拼接，`false` 疑似除权 / 基准不一致，`null` 无法判断——缓存滞后、个股停牌或日历不可用，原因见 `live.reason`，缓存状态见 `history`）。结果文本首行标出帧的时效与交易日，并带 `frame.status`（盘中实时 / 午间休市 / 收盘帧 / 非实时·上一交易日 / 非实时·延迟，首行与桌面端卡片徽标同一套文案）；不是 `live` 就不是此刻的数据。分钟 K 不提供（快照差分还原不了区间高低） |
 
 **解锁步骤**：
 
 1. 到 [hhxg.top/vip.html](https://hhxg.top/vip.html) 开通 Max 会员（月付 ¥99 / 年付 ¥999）。2026-10-27 起 MCP Token 只签给 Max；此前开通的 Pro 在原到期日前仍可用除 `hhxg_realtime` 以外的 VIP 工具（调用 `hhxg_realtime` 会返回「需要 Max」的说明）
-2. 到 [hhxg.top/account/mcp.html](https://hhxg.top/account/mcp.html) 生成 MCP Token（有效期跟随会员到期）
+2. 到 [hhxg.top/developer.html#mcp](https://hhxg.top/developer.html#mcp) 生成 MCP Token（有效期跟随会员到期；旧地址 `account/mcp.html` 会自动跳转过来）
 3. 把 Token 写进你 profile 的 `cordis.patch.yml`（dsh 目前不渲染第三方插件的配置项，没有设置界面可填；保存后重启 dsh 生效）：
 
 ```yaml

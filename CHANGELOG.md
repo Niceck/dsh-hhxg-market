@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 (2026-11-02)
+
+文案修补版，工具与参数不变。
+
+- **Token 页地址更新** 未配置 Token 时的占位说明、Token 无效 / 过期的错误提示、`mcpToken` 配置项描述、`cordis.patch.yml` 注释与 README 里的 MCP Token 签发页统一改为 `https://hhxg.top/developer.html#mcp`（旧地址 `account/mcp.html` 只剩跳转壳）。
+- **桌面端卡片徽标文案统一** `client.js` 在旧版 meta 没给 `label` 时的本地回退表改成与 host 首行同一套文案（`previous_session` → 「非实时·上一交易日」、`stale` → 「非实时·延迟」，原为「非今日 / 延迟」）；`present.js` 导出 `STATUS_LABEL`，测试逐状态锁定两表相同。
+- README 增加公开实测文章链接（0.5.0 条件选股的 5 组对话与 5 套策略计数）。
+- 不改服务端、不改字段口径、不改任何上限。
+
 ## 0.5.0 (2026-11-02)
 
 条件选股可用版：`hhxg_strategy_signals` 从「只能选预设」升级为「字段发现 + 自定义条件 + 全市场计数」。工具名、数量（7 免费 + 6 VIP）不变，旧的 `strategy_id` + `limit` 调用照常可用。

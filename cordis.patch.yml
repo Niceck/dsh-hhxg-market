@@ -11,7 +11,7 @@
 #   - update:
 #       - id: hhxg-market
 #         config:
-#           mcpToken: "<hhxg.top/account/mcp.html 生成的 MCP Token>"
+#           mcpToken: "<hhxg.top/developer.html#mcp 生成的 MCP Token>"
 # 从终端启动 dsh 时也可以不改文件：配置留空，设环境变量 HHXG_MCP_TOKEN。
 - insert:
     - id: hhxg-market

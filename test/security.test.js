@@ -200,7 +200,7 @@ for (const status of [401, 403]) {
     }
     assert.ok(err)
     assert.match(err.message, /MCP Token 无效或已过期/)
-    assert.match(err.message, /account\/mcp\.html/)
+    assert.match(err.message, /https:\/\/hhxg\.top\/developer\.html#mcp/, '指向当前的 Token 签发页')
     assert.doesNotMatch(err.message, /请求失败 HTTP/)
   })
 }

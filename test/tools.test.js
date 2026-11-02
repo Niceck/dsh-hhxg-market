@@ -413,7 +413,8 @@ test('未配置 token 的占位文案写的是 cordis.patch.yml 写法，不再�
 test('未配置 token 的占位文案含开通与配置指引', () => {
   const msg = vipLockedMessage('hhxg_diagnose_stock')
   assert.match(msg, /vip\.html/)
-  assert.match(msg, /account\/mcp\.html/)
+  assert.match(msg, /https:\/\/hhxg\.top\/developer\.html#mcp/, '0.5.1 起 Token 签发页是开发者接入页')
+  assert.doesNotMatch(msg, /account\/mcp\.html/, '旧地址只剩跳转壳，不再出现在文案里')
   assert.match(msg, /mcpToken/)
   assert.match(msg, /hhxg_datasets/)
   assert.match(msg, /Max 会员（月付 ¥99/, '2026-10-27 起 MCP Token 只签给 Max')
