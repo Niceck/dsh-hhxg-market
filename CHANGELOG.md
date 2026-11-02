@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 (2026-11-02)
+
+条件选股可用版：`hhxg_strategy_signals` 从「只能选预设」升级为「字段发现 + 自定义条件 + 全市场计数」。工具名、数量（7 免费 + 6 VIP）不变，旧的 `strategy_id` + `limit` 调用照常可用。
+
+- **可筛字段可发现** `hhxg_strategy_signals(list_fields=true)` 返回服务端全部可筛字段（约 200 个，含名称与类型），按「派生布尔条件 / 派生位置指标 / 周线 / 月线 / 文本 / 日线及通用」分组列出，每个字段恰好一次、名称不截断，并附 op 用法与三个示例。
+- **自定义条件筛选** 新增 `filters=[{field, op, value}]`（最多 8 条，op：gt/gte/lt/lte/eq/ne/in/contains/not_null）、`sort`、`fields`、`cursor` 参数，白名单透传给服务端 `screen_stocks`，插件不另造字段口径、不放宽上限；`strategy_id` 改为可选，与 `filters` 取交集；显式 `filters=[]` 表示不加条件看全市场。例：日线均线多头排列 `{field:"日均线多头", op:"eq", value:1}`。
+- **全市场计数到首行** 结果文本首行为「全市场共 N 只满足条件｜本页显示 M 只｜数据日期 YYYY-MM-DD（盘后快照）」，N 取服务端 `total`（`limit` 只控制每页行数，只问数量可设 `limit=1`），随后按返回列逐行列出（代码 / 名称置前，`null` 显示「缺失」，0 不是缺失），末尾给 `next_cursor` 翻页提示；结果超过 64 KiB 只保留放得下的行并明说截断、不再给 cursor。桌面端纯文本可读，不再回显整段 JSON。
+- **本地预检** 什么筛选方式都没给（或只给 cursor / sort / fields / limit）时在本地提示三种入口，不发请求；`filters` 形状非法（非数组、缺 field / op、op 不在列表、超过 8 条）按「参数有误：…（INVALID_ARG）」本地拒绝，不删条件继续查。
+- **盘中 view=screen 的 total** `hhxg_realtime view=screen` 的文本在首行之后加一行「【筛选】全市场共 N 只满足条件｜本次显示 M 只（按当前有效行情统计…）」；工具描述（插件与服务端 `get_realtime` / `screen_stocks`）同步写明 `total` 是全市场命中数、`limit` 只限制返回行数。
+- 数据集目录里「筛选」类数据集的指引改为本工具的三种用法；描述不再把用户支开到「MCP 客户端直接调 screen_stocks」。
+- 盘中派生条件列（日 / 周 / 月均线、MACD、KDJ 多头）尚未进入实时帧：「此刻盘中有多少只多头排列」暂不支持，请用本工具按最近盘后快照回答并注明数据日期。
+
 ## 0.4.2 (2026-11-02)
 
 结果可信度与兼容性修复版（外部评估 + Codex 审阅后的批次）。工具名、数量（7 免费 + 6 VIP）不变。

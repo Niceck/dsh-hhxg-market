@@ -82,10 +82,19 @@ test('策略信号改走 screen_stocks 的策略预设：strategy_id → preset�
 
   // 描述：不再承诺 CSV 直链；写清 9 个可用预设，另 3 个会返回 PRESET_NOT_SUPPORTED
   assert.ok(!signals.description.includes('直链'), '结果直接返回，不再是 CSV 直链')
-  // 全市场指标全表 2026-10-23 起会员独享、不再发布：不得再指引去取下载地址，改给 screen_stocks(filters) 出路
+  // 全市场指标全表 2026-10-23 起会员独享、不再发布：不得再指引去取下载地址；0.5.0 起自定义条件就在本工具 filters 做
   assert.ok(!/hhxg_query_dataset\(dataset_id="quant_signal_pool"\)/.test(signals.description), '全表不再经 query_dataset 下载')
   assert.match(signals.description, /quant_signal_pool）为会员数据，不提供下载地址/)
-  assert.match(signals.description, /screen_stocks\(filters=/)
+  assert.ok(!/MCP 客户端直接调/.test(signals.description), '不再把用户支开到别的 MCP 客户端')
+  // 条件选股能力要在描述最前面让模型选得到：字段发现、filters 示例、total 语义、只问数量的用法
+  assert.match(signals.description.slice(0, 60), /条件选股/)
+  assert.match(signals.description, /list_fields=true/)
+  assert.match(signals.description, /\{field:"日均线多头", op:"eq", value:1\}/)
+  assert.match(signals.description, /MA5>MA10>MA20>MA60/)
+  assert.match(signals.description, /total 是全市场满足条件的股票数/)
+  assert.match(signals.description, /limit=1/)
+  assert.match(signals.description, /next_cursor/)
+  assert.match(signals.description, /filters=\[\] 表示不加条件看全市场/)
   for (const id of [...USABLE_PRESETS, ...UNSUPPORTED_PRESETS]) assert.ok(signals.description.includes(id), id)
   assert.match(signals.description, /9 个/)
   assert.match(signals.description, /PRESET_NOT_SUPPORTED/)
@@ -135,18 +144,92 @@ test('runVipTool：缺必填参数时在本地给出可读说明，不发请求'
   const signals = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
   const alerts = VIP_TOOLS.find((t) => t.name === 'hhxg_stock_alerts')
   await withMcpStub(textResult({ data: {}, meta: {} }), async (sent) => {
-    // 空 preset 发给 screen_stocks 等于「没传」，会拿到未经筛选的全市场前 N 行——必须在本地拦住
-    for (const args of [{}, { strategy_id: '' }, { strategy_id: '   ' }, { strategy_id: null }, undefined]) {
+    // 什么筛选方式都没给就发给 screen_stocks 等于「没传」，会拿到未经筛选的全市场前 N 行——必须在本地拦住，
+    // 提示里把三种入口（list_fields / filters / strategy_id 预设清单）都列出来
+    for (const args of [{}, { strategy_id: '' }, { strategy_id: '   ' }, { strategy_id: null }, { list_fields: false }, undefined]) {
       const out = await runVipTool(signals, TOKEN, args)
+      assert.match(out, /^请提供筛选方式之一：list_fields=true/)
+      assert.match(out, /filters=\[\{field, op, value\}\]/)
       assert.match(out, /strategy_id/)
       for (const id of USABLE_PRESETS) assert.ok(out.includes(id), id)
     }
+    // 只给了翻页 / 排序 / 列 / 行数而没有筛选条件：同样拦住，并点名多余参数
+    const stray = await runVipTool(signals, TOKEN, { cursor: '20', limit: 5 })
+    assert.match(stray, /^只传了 cursor \/ limit，缺少筛选条件。请提供筛选方式之一/)
     for (const args of [{}, { stock_code: '' }, { stock_code: '  ', days: 7 }, undefined]) {
       const out = await runVipTool(alerts, TOKEN, args)
       assert.match(out, /stock_code/)
       assert.match(out, /600519/)
     }
     assert.equal(sent.length, 0, '本地就能判定的缺参不得消耗一次请求')
+  })
+})
+
+test('hhxg_strategy_signals：filters / sort / fields / limit / cursor / list_fields 白名单透传，值不改写', async () => {
+  const signals = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  const filters = [{ field: '日均线多头', op: 'eq', value: 1 }, { field: '行业', op: 'IN', value: ['银行', '保险'] }, { field: '涨停原因', op: 'not_null' }]
+  const args = { strategy_id: ' limit_up ', filters, sort: ' -涨跌幅% ', fields: ['收盘价', '', 7, '日均线多头'], limit: 1, cursor: ' 20 ', list_fields: false, extra: 'x' }
+  const frozen = JSON.stringify(args)
+  assert.deepEqual(signals.buildArgs(args), {
+    preset: 'limit_up', filters, sort: '-涨跌幅%', fields: ['收盘价', '日均线多头'], limit: 1, cursor: '20', list_fields: false,
+  })
+  assert.equal(JSON.stringify(args), frozen, '原参数不得被改写')
+  assert.equal(signals.buildArgs(args).filters, filters, 'filters 原样透传（含 value:0 / in 数组），不在插件里改写条件值')
+  assert.deepEqual(signals.buildArgs({ list_fields: true }), { list_fields: true })
+  assert.deepEqual(signals.buildArgs({ filters: [] }), { filters: [] }, '显式空 filters 要发出去（有意看全市场）')
+  assert.deepEqual(signals.buildArgs({ filters: [{ field: '涨跌幅%', op: 'gte', value: 0 }] }), { filters: [{ field: '涨跌幅%', op: 'gte', value: 0 }] })
+  // 服务端 next_cursor 是数字串 "20"，模型常回传成数字 20：整数转成字符串透传，不能静默丢掉（否则永远拿第一页）
+  assert.deepEqual(signals.buildArgs({ filters: [], cursor: 20 }), { filters: [], cursor: '20' })
+  assert.deepEqual(signals.buildArgs({ filters: [], cursor: 0 }), { filters: [], cursor: '0' })
+  // 参数名与形状跟服务端 screen_stocks 一致
+  assert.deepEqual(Object.keys(signals.parameters).sort(), ['cursor', 'fields', 'filters', 'limit', 'list_fields', 'sort', 'strategy_id'])
+  assert.equal(signals.parameters.strategy_id.required, undefined, 'strategy_id 不再必填')
+  assert.equal(signals.parameters.filters.items.additionalProperties, false)
+  assert.deepEqual(signals.parameters.filters.items.properties.op.enum, ['gt', 'gte', 'lt', 'lte', 'eq', 'ne', 'in', 'contains', 'not_null'])
+  await withMcpStub(textResult({ data: { total: 253, returned: 1, fields: ['日均线多头'], rows: [{ 股票代码: '000028.SZ', 日均线多头: 1 }], next_cursor: null }, meta: { as_of: '2026-10-30' } }), async (sent) => {
+    for (const a of [
+      { list_fields: true },
+      { filters: [] },
+      { filters: [{ field: '日均线多头', op: 'eq', value: 1 }], limit: 1 },
+      { filters: [{ field: '涨停原因', op: 'not_null' }] },
+      { strategy_id: 'limit_up', filters: [{ field: '量比', op: 'gt', value: 2 }], cursor: '20' },
+    ]) {
+      const out = await runVipTool(signals, TOKEN, a)
+      assert.match(out, /000028\.SZ/, JSON.stringify(a))
+    }
+    assert.equal(sent.length, 5)
+    assert.deepEqual(sent[0].body.params, { name: 'screen_stocks', arguments: { list_fields: true } })
+    assert.deepEqual(sent[1].body.params.arguments, { filters: [] })
+    assert.deepEqual(sent[2].body.params.arguments, { filters: [{ field: '日均线多头', op: 'eq', value: 1 }], limit: 1 })
+    assert.deepEqual(sent[4].body.params.arguments, { preset: 'limit_up', filters: [{ field: '量比', op: 'gt', value: 2 }], cursor: '20' })
+  })
+})
+
+test('hhxg_strategy_signals：filters 形状非法按「参数有误」本地拒绝，不当成没传、不删条件继续查', async () => {
+  const signals = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  await withMcpStub(textResult({ data: {}, meta: {} }), async (sent) => {
+    const cases = [
+      [{ filters: 'x' }, /^参数有误：filters 须为 \[\{field, op, value\}\] 数组（INVALID_ARG）$/],
+      [{ filters: { field: 'a', op: 'eq', value: 1 } }, /filters 须为/],
+      [{ filters: [{ field: 'a' }] }, /filters 第 1 条须为 \{field, op, value\}，op 取 gt\/gte\/lt\/lte\/eq\/ne\/in\/contains\/not_null（INVALID_ARG）/],
+      [{ filters: [{ field: 'a', op: 'eq', value: 1 }, { field: '', op: 'eq', value: 1 }] }, /第 2 条/],
+      [{ filters: [{ field: 'a', op: 'between', value: 1 }] }, /第 1 条/],
+      [{ filters: [['a', 'eq', 1]] }, /第 1 条/],
+      [{ strategy_id: 'limit_up', filters: 'x' }, /filters 须为/],
+      [{ filters: Array.from({ length: 9 }, () => ({ field: 'a', op: 'eq', value: 1 })) }, /^参数有误：filters 最多 8 条（收到 9 条）（INVALID_ARG）$/],
+      // op 带空白：服务端只 toLowerCase 不 trim，本地同口径拒绝，省一次必败的往返
+      [{ filters: [{ field: 'a', op: ' eq', value: 1 }] }, /第 1 条/],
+      // value 只能是数字 / 字符串 / 它们的数组
+      [{ filters: [{ field: 'a', op: 'eq', value: { x: 1 } }] }, /第 1 条的 value 须为数字、字符串或它们的数组/],
+      [{ filters: [{ field: 'a', op: 'eq', value: true }] }, /第 1 条的 value/],
+      [{ filters: [{ field: 'a', op: 'in', value: [1, { x: 1 }] }] }, /第 1 条的 value/],
+      // cursor 只认字符串 / 非负整数
+      [{ filters: [], cursor: { page: 2 } }, /^参数有误：cursor 须为上一页返回的 next_cursor（字符串）（INVALID_ARG）$/],
+      [{ filters: [], cursor: 1.5 }, /cursor 须为/],
+      [{ filters: [], cursor: true }, /cursor 须为/],
+    ]
+    for (const [args, re] of cases) assert.match(await runVipTool(signals, TOKEN, args), re, JSON.stringify(args))
+    assert.equal(sent.length, 0)
   })
 })
 
