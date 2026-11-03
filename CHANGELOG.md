@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 (2026-11-04)
+
+两列比较版：条件里可以让两个指标互相比较。工具名、数量（7 免费 + 6 VIP）不变，旧调用照常可用。服务端随 STOCK-REPORT `904dcd6bdb`（2026-11-03）上线。
+
+- **两列比较** `hhxg_strategy_signals` 与 `hhxg_realtime view=screen` 的条件新增 `{field, op, ref, scale}`，含义 field op ref × scale（scale 默认 1，范围 (0, 100]，op 只能 gt/gte/lt/lte，ref 与 value 二选一）。例：站上 20 日线 `{field:"收盘价", op:"gt", ref:"MA20"}`、高出 5% 加 `scale:1.05`、突破布林上轨 `ref:"BOLL上"`、MA5 上穿 MA10 写两条（`MA5 gt ref=MA10` 与 `MA5_prev lte ref=MA10_prev`）、盘中多头排列写三条。此前条件 schema 只允许 field / op / value，模型只能翻页取回再自己比（实测 552 行漏 5 只）。
+- **说明改写** 工具说明要求能写成 filters 的条件一次交给服务端，不翻页自己比；写明 `oversold_rebound`、`macd_death_cross` 两个不可用预设的 filters 等价写法；可筛列更新为约 270 列（含题材概念、股票池、持股标签、游资席位、行业 / 地域 / 市场类型、上市天数、股东集中度、大宗）；提示 `企业类型` 是实控人性质（民营多记为 自然人）。
+- **本地预检** 两列比较形状不对（ref 为空或和 field 相同、op 不是 gt/gte/lt/lte、同时写了 value、scale 越界、只写 scale）本地拒绝；多值列（题材概念 / 股票池 / 持股标签 / 游资席位）只放行 contains / not_null——服务端对 ne / eq / in 按整串比较，取反会静默命中几乎全市场（插件在这点上有意比服务端严：eq / in 按整串比较也基本筛不到东西，按名称请用 contains，精确名写 `|涨停池|`）。`hhxg_realtime view=screen` 现在也走同一套 filters 预检，op 列表补上 contains（盘后属性列要用）。
+- **条件回显** 结果第二行把两列比较写成 `收盘价 gt MA60 × 1.05`；字段目录说明两列比较写法。
+- 不改上限、不改字段口径；两列是否存在、是否数值列仍由服务端判。
+
 ## 0.5.1 (2026-11-02)
 
 文案修补版，工具与参数不变。

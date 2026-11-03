@@ -430,3 +430,108 @@ for (const spec of FREE_TOOLS) {
     assert.match(out, /hhxg\.top/, '输出应带数据来源落款')
   })
 }
+
+test('hhxg_strategy_signals：两列比较 {field, op, ref, scale} 原样透传；schema 允许 ref / scale', async () => {
+  const signals = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  const items = signals.parameters.filters.items
+  assert.equal(items.additionalProperties, false, 'defineTool 要求嵌套 object 显式写 additionalProperties')
+  assert.equal(items.properties.ref.type, 'string')
+  assert.equal(items.properties.scale.type, 'number')
+  const filters = [
+    { field: '题材概念', op: 'contains', value: '算力' },
+    { field: '收盘价', op: 'gt', ref: 'MA20' },
+    { field: '收盘价', op: 'gt', ref: 'MA60', scale: 1.05 },
+    { field: 'MA5', op: 'gt', ref: 'MA10', value: null, scale: null },
+  ]
+  await withMcpStub(textResult({ data: { total: 42, rows: [] }, meta: {} }), async (sent) => {
+    await runVipTool(signals, TOKEN, { filters })
+    assert.deepEqual(sent[0].body.params.arguments, { filters }, '条件原样发给服务端，口径由服务端判')
+  })
+})
+
+test('hhxg_strategy_signals：两列比较形状不对在本地拒绝，不发请求', async () => {
+  const signals = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  await withMcpStub(textResult({ data: {}, meta: {} }), async (sent) => {
+    const one = (f) => ({ filters: [f] })
+    const cases = [
+      [one({ field: '收盘价', op: 'gt', ref: '' }), /第 1 条的 ref 须为另一个数值字段名/],
+      [one({ field: '收盘价', op: 'gt', ref: 3 }), /第 1 条的 ref 须为另一个数值字段名/],
+      [one({ field: '收盘价', op: 'gt', ref: '收盘价' }), /第 1 条的 ref 不能和 field 是同一个字段/],
+      [one({ field: '收盘价', op: 'eq', ref: 'MA20' }), /第 1 条是两列比较，op 只能用 gt\/gte\/lt\/lte/],
+      [one({ field: '收盘价', op: 'not_null', ref: 'MA20' }), /op 只能用 gt\/gte\/lt\/lte/],
+      [one({ field: '收盘价', op: 'gt', ref: 'MA20', value: 1 }), /第 1 条写了 ref 就不要写 value/],
+      [one({ field: '收盘价', op: 'gt', ref: 'MA20', scale: 0 }), /第 1 条的 scale 须为大于 0、不超过 100 的数字/],
+      [one({ field: '收盘价', op: 'gt', ref: 'MA20', scale: 101 }), /scale 须为/],
+      [one({ field: '收盘价', op: 'gt', ref: 'MA20', scale: '1.05' }), /scale 须为/],
+      [one({ field: '收盘价', op: 'gt', value: 1, scale: 2 }), /第 1 条的 scale 只和 ref 一起用/],
+    ]
+    for (const [args, re] of cases) {
+      const out = await runVipTool(signals, TOKEN, args)
+      assert.match(out, /^参数有误：/, JSON.stringify(args))
+      assert.match(out, re, JSON.stringify(args))
+    }
+    assert.equal(sent.length, 0)
+  })
+})
+
+test('hhxg_strategy_signals：说明教两列比较，并要求把条件交给服务端，不翻页自己比', () => {
+  const { description } = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  assert.match(description, /ref/)
+  assert.match(description, /scale/)
+  assert.match(description, /不要翻页/)
+  assert.match(description, /题材概念/)
+  assert.match(description, /股票池/)
+  assert.doesNotMatch(description, /约 200 个字段/, '服务端现在是约 270 列')
+})
+
+test('hhxg_realtime：view=screen 也支持 ref / scale 与 contains，形状不对本地拒绝', async () => {
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  const items = rt.parameters.filters.items
+  assert.equal(items.additionalProperties, false)
+  assert.equal(items.properties.ref.type, 'string')
+  assert.equal(items.properties.scale.type, 'number')
+  assert.ok(items.properties.op.enum.includes('contains'), '盘后属性列（题材概念等）要用 contains')
+  assert.match(rt.description, /ref/)
+  assert.match(rt.description, /同为实时字段/)
+  const filters = [{ field: '最新价', op: 'gt', ref: 'MA20', scale: 1.02 }, { field: '题材概念', op: 'contains', value: '算力' }]
+  await withMcpStub(textResult({ data: { frame: { status: 'closed' }, total: 0, rows: [] }, meta: {} }), async (sent) => {
+    await runVipTool(rt, TOKEN, { view: 'screen', filters })
+    assert.deepEqual(sent[0].body.params.arguments, { view: 'screen', filters })
+    const bad = await runVipTool(rt, TOKEN, { view: 'screen', filters: [{ field: '最新价', op: 'eq', ref: 'MA20' }] })
+    assert.match(bad, /^参数有误：.*op 只能用 gt\/gte\/lt\/lte/)
+    assert.equal(sent.length, 1, '形状不对的不发请求')
+  })
+})
+
+test('多值列（题材概念 / 股票池 / 持股标签 / 游资席位）只认 contains / not_null：取反会静默返回几乎全市场，本地拒绝', async () => {
+  const signals = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  await withMcpStub(textResult({ data: { total: 1, rows: [] }, meta: {} }), async (sent) => {
+    for (const op of ['ne', 'eq', 'in', 'gt']) {
+      for (const field of ['题材概念', '股票池', '持股标签', '游资席位']) {
+        const value = op === 'in' ? ['算力'] : '算力'
+        const out = await runVipTool(signals, TOKEN, { filters: [{ field, op, value }] })
+        assert.match(out, /^参数有误：filters 第 1 条的 .+ 是多值列，只能用 contains（按名称）或 not_null，不支持取反/, `${field} ${op}`)
+      }
+    }
+    const live = await runVipTool(rt, TOKEN, { view: 'screen', filters: [{ field: '题材概念', op: 'ne', value: '算力' }] })
+    assert.match(live, /是多值列/)
+    assert.equal(sent.length, 0)
+    await runVipTool(signals, TOKEN, { filters: [{ field: '题材概念', op: 'contains', value: '算力' }, { field: '游资席位', op: 'not_null' }] })
+    assert.equal(sent.length, 1, 'contains / not_null 照常放行')
+  })
+})
+
+test('说明里写清企业类型是实控人性质（民营多记为 自然人）', () => {
+  const { description } = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  assert.match(description, /企业类型.*自然人/)
+})
+
+test('hhxg_realtime：view=screen 的布尔 value 本地拒绝（服务端同样只认有限数字 / 字符串）', async () => {
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  await withMcpStub(textResult({ data: {}, meta: {} }), async (sent) => {
+    const out = await runVipTool(rt, TOKEN, { view: 'screen', filters: [{ field: '涨停状态', op: 'eq', value: true }] })
+    assert.match(out, /^参数有误：filters 第 1 条的 value 须为数字、字符串或它们的数组/)
+    assert.equal(sent.length, 0)
+  })
+})

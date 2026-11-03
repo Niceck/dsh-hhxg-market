@@ -5,7 +5,7 @@
 把 A股日报快照、财经快讯、融资融券、市场情绪、题材热度等量化数据变成 dsh Agent 的原生工具——问一句"今天市场情绪怎么样"，模型自己调工具拿真实数据回答。
 
 - **7 个免费工具**：零配置、无需注册，安装即用
-- **6 个 VIP 工具**：个股综合诊断、条件选股与量化策略预设（可筛字段约 200 个、返回全市场命中数）、连板晋级预测、盘中实时行情与指标（Max 专属）等，填入 [MCP Token](https://hhxg.top/developer.html#mcp) 解锁
+- **6 个 VIP 工具**：个股综合诊断、条件选股与量化策略预设（约 270 列，支持两个指标互相比较，返回全市场命中数）、连板晋级预测、盘中实时行情与指标（Max 专属）等，填入 [MCP Token](https://hhxg.top/developer.html#mcp) 解锁
 
 实测记录：[我把选股条件直接「说」给 AI，它不但筛完全市场，还自己设计了 5 套策略](https://zhuanlan.zhihu.com/p/2100516061787570728)（知乎，0.5.0 条件选股的 5 组对话 + 5 套策略逐套计数，含可筛字段分组与限制说明）。
 
@@ -46,7 +46,7 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 | 工具 | 说明 |
 |---|---|
 | `hhxg_diagnose_stock` | 个股综合诊断：日/周/月技术指标、异动评级、两融趋势、龙虎榜、涨停、大宗、公告、概念 |
-| `hhxg_strategy_signals` | A 股条件选股 / 指标筛选 / 全市场命中计数（最新盘后快照，约 200 个可筛字段）：`list_fields=true` 列出全部可筛字段与类型；`filters=[{field, op, value}]`（最多 8 条，op gt/gte/lt/lte/eq/ne/in/contains/not_null）自定义筛选，如日线均线多头排列 `{field:"日均线多头", op:"eq", value:1}`；结果首行给全市场命中数 `total`（`limit` 1-100 只控制每页行数，只问数量设 `limit=1`），`sort` / `fields` / `cursor` 翻页；`strategy_id` 可选用 9 个策略预设（涨停 / 放量突破 / 缩量整理 / 九转买入 / 九转卖出 / KDJ 超买 / KDJ 超卖 / 暴跌预警 / MACD 金叉），与 `filters` 取交集 |
+| `hhxg_strategy_signals` | A 股条件选股 / 指标筛选 / 全市场命中计数（最新盘后快照，约 270 列，含题材概念、股票池、财务等基本信息）：`list_fields=true` 列出全部可筛字段与类型；`filters=[{field, op, value}]`（最多 8 条，op gt/gte/lt/lte/eq/ne/in/contains/not_null）自定义筛选，如日线均线多头排列 `{field:"日均线多头", op:"eq", value:1}`；两个数值字段互相比写 `{field, op, ref, scale}`（field op ref × scale，op 只能 gt/gte/lt/lte），如站上 20 日线 `{field:"收盘价", op:"gt", ref:"MA20"}`；题材概念 / 股票池 / 持股标签 / 游资席位是多值列，只用 contains / not_null；结果首行给全市场命中数 `total`（`limit` 1-100 只控制每页行数，只问数量设 `limit=1`），`sort` / `fields` / `cursor` 翻页；`strategy_id` 可选用 9 个策略预设（涨停 / 放量突破 / 缩量整理 / 九转买入 / 九转卖出 / KDJ 超买 / KDJ 超卖 / 暴跌预警 / MACD 金叉），与 `filters` 取交集 |
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
 | `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id 与是否可查） |
@@ -70,7 +70,7 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 
 未填 Token 时 VIP 工具仍会注册为引导占位（调用返回开通指引），不影响免费工具。设 `enableVipTools: false` 可整体关闭 VIP 工具注册（此时环境变量也不会解锁）。
 
-`hhxg_strategy_signals` 的 12 个策略标识里有 3 个（`oversold_rebound` / `macd_death_cross` / `distribution`）需要列间比较或分位数，暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；自定义条件直接用本工具的 `filters`（0.5.0 起），列间比较已算好的派生列（日 / 周 / 月均线多头、MACD 多头、KDJ 多头、MACD 金叉、站上 / 低于放量高低点、波段位置%）按常量筛即可。盘中实时帧（`hhxg_realtime view=screen`）目前没有这些派生列，「此刻盘中有多少只多头排列」暂不支持，请按最近盘后快照回答并注明数据日期。
+`hhxg_strategy_signals` 的 12 个策略标识里有 3 个（`oversold_rebound` / `macd_death_cross` / `distribution`）暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）；前两个可以直接用 0.6.0 的两列比较 `filters` 写出来（工具说明里给了写法），`distribution` 需要分位数，写不出来。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；自定义条件直接用本工具的 `filters`。能写成 `filters` 的条件都应一次交给服务端筛完，不要翻页取回再让模型自己比（2026-11-03 实测：自己比 552 行漏了 5 只，标题总数还和表格对不上）。盘中 `hhxg_realtime view=screen` 没有派生列，但同样能用两列比较：多头排列 = `MA5 gt ref=MA10`、`MA10 gt ref=MA20`、`MA20 gt ref=MA60` 三条；两个字段须同为实时字段或同为盘后属性列。
 
 **版本对应**：0.3.0 起 VIP 工具只调用 hhxg MCP server 的正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`，0.4.0 起加 `get_realtime`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，已于 2026-10-27 下线（服务端 0.5.0），0.2.x 的这两个工具已失效，请升级。
 

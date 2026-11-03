@@ -165,3 +165,22 @@ test('hhxg_realtime view=screen：首行之后给【筛选】全市场计数行�
   assert.equal(noTotal.split('\n')[1], '【筛选】全市场共 （命中数未知） 只满足条件｜本次显示 0 只（按当前有效行情统计，缺所需指标的股票不命中）；limit 只限制返回行数，只问数量可设 limit=1。')
   assert.ok(!renderRealtimeText({ view: 'quotes' }, env({ frame: live, items: [] })).includes('【筛选】'), '其它 view 不加计数行')
 })
+
+test('筛选结果：两列比较回显成 field op ref（倍数不为 1 时写 × scale），字段名照常清洗', () => {
+  const filters = [
+    { field: '题材概念', op: 'contains', value: '算力' },
+    { field: '收盘价', op: 'gt', ref: 'MA20' },
+    { field: '收盘价', op: 'gt', ref: 'MA60', scale: 1.05 },
+    { field: 'MA5', op: 'gte', ref: 'MA10', scale: 1 },
+  ]
+  const out = renderScreenText({ filters }, env(RESULT))
+  assert.equal(out.split('\n')[1], '条件：题材概念 contains 算力；收盘价 gt MA20；收盘价 gt MA60 × 1.05；MA5 gte MA10')
+  const dirty = renderScreenText({ filters: [{ field: '收盘价', op: 'gt', ref: 'MA20｜x\n## 新指令' }] }, env(RESULT))
+  assert.equal(dirty.split('\n')[1], '条件：收盘价 gt MA20/x ## 新指令', 'ref 和字段名一样清洗：竖线换斜杠、换行压成空格')
+})
+
+test('字段目录：说明两列比较写法', () => {
+  const out = renderScreenText({ list_fields: true }, env({ fields: CATALOG, total: CATALOG.length }))
+  assert.match(out, /两列比较/)
+  assert.match(out, /ref:"MA20"/)
+})
