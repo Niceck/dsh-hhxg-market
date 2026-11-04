@@ -535,3 +535,17 @@ test('hhxg_realtime：view=screen 的布尔 value 本地拒绝（服务端同样
     assert.equal(sent.length, 0)
   })
 })
+
+test('工具说明分流盘中 / 盘后：hhxg_strategy_signals 写明不含今天盘中、交易时段改用 hhxg_realtime view=screen；hhxg_realtime 要求交易时段选股优先 view=screen，并写明指标口径与无翻页', () => {
+  const signals = VIP_TOOLS.find((t) => t.name === 'hhxg_strategy_signals')
+  assert.match(signals.description, /不含今天盘中行情/)
+  assert.match(signals.description, /hhxg_realtime view=screen/)
+  assert.match(signals.description, /收盘价换成 最新价|价格字段叫 最新价/)
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  assert.match(rt.description, /优先用 view=screen/)
+  assert.match(rt.description, /hhxg_strategy_signals/)
+  assert.match(rt.description, /不是上一交易日收盘的指标/)
+  assert.match(rt.description, /base_date/)
+  assert.match(rt.description, /没有翻页/)
+  assert.match(rt.parameters.limit.description, /无翻页|没有翻页/)
+})
