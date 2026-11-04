@@ -549,3 +549,11 @@ test('工具说明分流盘中 / 盘后：hhxg_strategy_signals 写明不含今�
   assert.match(rt.description, /没有翻页/)
   assert.match(rt.parameters.limit.description, /无翻页|没有翻页/)
 })
+
+test('hhxg_realtime：view=screen 的 limit 说明为 1-100 且无翻页（服务端 2026-11-04 起上限 100）', () => {
+  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  assert.match(rt.description, /limit 1-100 且没有翻页/)
+  assert.doesNotMatch(rt.description, /limit 1-50/)
+  assert.match(rt.parameters.limit.description, /1-100/)
+  assert.deepEqual(rt.buildArgs({ view: 'screen', filters: [], limit: 100 }), { view: 'screen', filters: [], limit: 100 }, 'limit 原样透传，权威校验在服务端')
+})

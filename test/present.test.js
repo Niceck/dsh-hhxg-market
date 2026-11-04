@@ -89,14 +89,20 @@ test('非成功信封 / 业务性答复 / 未知 view / 坏 JSON → undefined�
   assert.equal(weird.frame, null)
 })
 
-test('体积上限：行 ≤50、列 ≤12、单元格截断，布尔 / 非有限数归一', () => {
+test('体积上限：screen 行 ≤100（随服务端 limit 上限）、其余视图行 ≤50、列 ≤12、单元格截断，布尔 / 非有限数归一', () => {
   const fields = Array.from({ length: 20 }, (_v, i) => `f${i}`)
   const row = Object.fromEntries(fields.map((f, i) => [f, i === 0 ? 'x'.repeat(100) : i === 1 ? true : i === 2 ? Infinity : i]))
-  const rows = Array.from({ length: 80 }, (_v, i) => ({ 股票代码: `00000${i}`, 股票名称: 'n', ...row }))
+  const rows = Array.from({ length: 120 }, (_v, i) => ({ 股票代码: `00000${i}`, 股票名称: 'n', ...row }))
   const meta = realtimePresentation({ view: 'screen' }, envelope({ frame: FRAME, fields, rows }))
   assert.equal(meta.columns.length, 12)
-  assert.equal(meta.rows.length, 50)
+  assert.equal(meta.rows.length, 100)
   assert.equal(meta.truncated, true)
+  const exact = realtimePresentation({ view: 'screen' }, envelope({ frame: FRAME, fields: fields.slice(0, 3), rows: rows.slice(0, 100) }))
+  assert.equal(exact.rows.length, 100)
+  assert.equal(exact.truncated, false, '恰好 100 行不算截断')
+  const quotes = realtimePresentation({ view: 'quotes' }, envelope({ frame: FRAME, items: Array.from({ length: 60 }, (_v, i) => ({ 股票代码: `${i}`, 股票名称: 'n', quote: { 最新价: 1 } })) }))
+  assert.equal(quotes.rows.length, 50, '其余视图仍是 50')
+  assert.equal(quotes.truncated, true)
   assert.equal(meta.rows[0][2].length, 40)
   assert.ok(meta.rows[0][2].endsWith('…'))
   assert.equal(meta.rows[0][3], '是')

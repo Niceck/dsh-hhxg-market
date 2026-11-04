@@ -50,7 +50,7 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） |
 | `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用免费的 `hhxg_datasets` 查合法 id 与是否可查） |
-| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回 50 行、无翻页；交易时段的选股优先用它）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`codes × bars ≤ 1000`，`adj` 前复权 / 不复权）+ 实时帧那天未走完的 K（`live`；`comparable` 只有 `true` 才可与历史拼接，`false` 疑似除权 / 基准不一致，`null` 无法判断——缓存滞后、个股停牌或日历不可用，原因见 `live.reason`，缓存状态见 `history`）。盘中 MA / BBI / MACD / KDJ 等指标按最新价把帧交易日当天当作未走完的 K 线计算（不是上一交易日收盘的指标，`indicators.base_date` 只是历史基准日，结果里有【口径】行写明）。结果文本首行标出帧的时效与交易日，并带 `frame.status`（盘中实时 / 午间休市 / 收盘帧 / 非实时·上一交易日 / 非实时·延迟，首行与桌面端卡片徽标同一套文案）；不是 `live` 就不是此刻的数据。分钟 K 不提供（快照差分还原不了区间高低） |
+| `hhxg_realtime` | **Max 专属**盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回最多 100 行、无翻页；交易时段的选股优先用它）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`codes × bars ≤ 1000`，`adj` 前复权 / 不复权）+ 实时帧那天未走完的 K（`live`；`comparable` 只有 `true` 才可与历史拼接，`false` 疑似除权 / 基准不一致，`null` 无法判断——缓存滞后、个股停牌或日历不可用，原因见 `live.reason`，缓存状态见 `history`）。盘中 MA / BBI / MACD / KDJ 等指标按最新价把帧交易日当天当作未走完的 K 线计算（不是上一交易日收盘的指标，`indicators.base_date` 只是历史基准日，结果里有【口径】行写明）。结果文本首行标出帧的时效与交易日，并带 `frame.status`（盘中实时 / 午间休市 / 收盘帧 / 非实时·上一交易日 / 非实时·延迟，首行与桌面端卡片徽标同一套文案）；不是 `live` 就不是此刻的数据。分钟 K 不提供（快照差分还原不了区间高低） |
 
 **解锁步骤**：
 
