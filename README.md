@@ -17,6 +17,8 @@
 dsh plugin --profile web add @hhxg/dsh-hhxg-market
 ```
 
+> 国内网络下载慢：先执行 `npm config set registry https://registry.npmmirror.com` 切到 npmmirror 镜像再安装（`dsh plugin` 把参数转给 pnpm，pnpm 读这项设置；npmmirror 会自动同步新版本）。该设置全局生效，改回官方源用 `npm config delete registry`。国内连 GitHub 不稳定，优先用 npm 安装。
+
 或直接从 GitHub 安装（备选，解析到仓库最新提交）：
 
 ```bash
