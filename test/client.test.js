@@ -9,7 +9,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { FREE_TOOLS, VIP_TOOLS } from '../lib/tools.js'
+import { TOOLS } from '../lib/tools.js'
 import { realtimePresentation, STATUS_LABEL } from '../lib/present.js'
 
 // ── 物化 ────────────────────────────────────────────────────────────
@@ -98,7 +98,7 @@ test('apply 只向 tool.call.toolview 注册，key ⊆ host 工具名；slots �
   assert.equal(regs.length, 1)
   assert.deepEqual(regs[0].decl, { name: 'tool.call.toolview', key: 'hhxg_realtime' })
   assert.equal(regs[0].component, mod.RealtimeCard)
-  const hostTools = new Set([...FREE_TOOLS, ...VIP_TOOLS].map((t) => t.name))
+  const hostTools = new Set(TOOLS.map((t) => t.name))
   assert.ok(hostTools.has(regs[0].decl.key), 'client 注册的工具名必须是 host 真实注册的工具')
 })
 

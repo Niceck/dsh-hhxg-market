@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { realtimePresentation, renderRealtimeText } from '../lib/present.js'
-import { VIP_TOOLS, runVipTool } from '../lib/tools.js'
+import { TOOLS, runTool } from '../lib/tools.js'
 import { resolveMcpToken, TOKEN_ENV, MCP_RPC_URL } from '../lib/api.js'
 
 const envelope = (data) => JSON.stringify({ data, meta: { source: 'query_service' } })
@@ -143,17 +143,17 @@ async function withMcpStub(fn) {
 }
 
 test('hhxg_realtime 预检：codes / bars / 乘积越界本地给「参数有误」且不发请求；合法边界放行', async () => {
-  const rt = VIP_TOOLS.find((t) => t.name === 'hhxg_realtime')
+  const rt = TOOLS.find((t) => t.name === 'hhxg_realtime')
   const codes = (n) => Array.from({ length: n }, (_v, i) => String(600000 + i))
   await withMcpStub(async (sent) => {
     const refuse = async (args, re) => {
       const before = sent.length
-      assert.match(await runVipTool(rt, TOKEN, args), re, JSON.stringify(args))
+      assert.match(await runTool(rt, TOKEN, args), re, JSON.stringify(args))
       assert.equal(sent.length, before, `不得发请求：${JSON.stringify(args)}`)
     }
     const allow = async (args) => {
       const before = sent.length
-      await runVipTool(rt, TOKEN, args)
+      await runTool(rt, TOKEN, args)
       assert.equal(sent.length, before + 1, `应放行：${JSON.stringify(args)}`)
       assert.equal(sent.at(-1).url, MCP_RPC_URL)
     }
@@ -178,7 +178,7 @@ test('hhxg_realtime 预检：codes / bars / 乘积越界本地给「参数有误
     await allow({ view: 'kline', codes: '600519,000001', bars: null })
     await allow({ view: 'quotes', codes: codes(30) })
     // 与服务端文案同形：业务答复前缀 + 错误码
-    const msg = await runVipTool(rt, TOKEN, { view: 'kline', codes: codes(4), bars: 251 })
+    const msg = await runTool(rt, TOKEN, { view: 'kline', codes: codes(4), bars: 251 })
     assert.equal(msg, '参数有误：codes × bars 不能超过 1000 根，请减少 codes 或 bars（RESULT_TOO_LARGE）')
   })
 })

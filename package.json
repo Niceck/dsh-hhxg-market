@@ -1,7 +1,7 @@
 {
   "name": "@hhxg/dsh-hhxg-market",
-  "version": "0.6.2",
-  "description": "恢恢量化 (hhxg.top) A股量化数据插件 for DeepSeek Harness：免费提供日报快照/财经快讯/融资融券/A股日历/市场情绪/题材热度/数据集目录 7 个工具；填入会员 MCP Token 后解锁个股诊断/量化策略信号/连板晋级预测/盘中实时（Max）等 6 个进阶工具。A-share quant data plugin for DeepSeek Harness (dsh): 7 free tools + 6 VIP tools (incl. Max-only intraday realtime) bridged to the hhxg MCP server.",
+  "version": "0.7.0",
+  "description": "恢恢量化 (hhxg.top) A股量化数据插件 for DeepSeek Harness：13 个工具——日报快照 / 财经快讯 / 融资融券 / 投资者事件日历 / 市场情绪 / 题材热度 / 数据集目录 / 个股诊断 / 条件选股与策略预设 / 连板晋级预测 / 异动历史 / 数据集查询 / 盘中实时，全部经 hhxg MCP server 取数，填入 Max 会员的 MCP Token 即用。A-share quant data plugin for DeepSeek Harness (dsh): 13 research-only tools bridged to the hhxg MCP server; all of them require a Max-membership MCP token.",
   "keywords": [
     "dsh",
     "dsh-plugin",

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.7.0 (2026-11-08)
+
+全部工具改需 Max 会员的 MCP Token：站长 2026-11-08 拍板删除一切免费 AI 接入，插件不再分「免费 / VIP」。工具名与数量（13 个）不变；`hhxg_calendar` 参数变更（见下）；`enableVipTools` 配置项删除。服务端随 STOCK-REPORT 2026-11-08 的 Max 收口（`docs/plans/2026-11-08-max-only-ai-and-data.md`）上线：4 个公开端点 `/api/snapshot` `/api/news` `/api/margin` `/api/calendar` 已删除（返回 404），公开目录不再对外给下载地址。
+
+- **一视同仁** 13 个工具统一注册、统一经 `runTool` 执行：没 token（配置 `mcpToken` 与环境变量 `HHXG_MCP_TOKEN` 都空）时每个工具都返回开通指引，不发任何请求；有 token 全部经 hhxg MCP server（`https://hhxg.top/mcp/rpc`，JSON-RPC 2.0，`Authorization: Bearer <token>`）取数。开通指引去掉「免费工具无需配置」与「此前开通的 Pro 在原到期日前仍可用」两句——存量 Pro 的接口保护期已结束，MCP Token 只签给 Max。
+- **原 7 个免费工具改经 MCP**：
+
+  | 工具 | 0.6.x | 0.7.0 |
+  |---|---|---|
+  | `hhxg_snapshot` | `GET /api/snapshot` | `resources/read hhxg://kb/snapshot`（KB scope=snapshot，即 skill_snapshot.json，数据在信封顶层） |
+  | `hhxg_news` | `GET /api/news?limit=` | `tools/call search_documents {kind:"news", limit}`（limit 1-50；条目为摘要级字段 published_at / channel / title / source，不再带多空情绪标签） |
+  | `hhxg_margin` | `GET /api/margin` | `resources/read hhxg://kb/margin` |
+  | `hhxg_calendar` | `GET /api/calendar?type=&month=` | `resources/read hhxg://calendar/{yyyymm}` |
+  | `hhxg_sentiment` | `GET /static/data/assistant/recent_sentiment_7d.json` | `resources/read hhxg://kb/sentiment` |
+  | `hhxg_themes` | `GET /static/data/assistant/recent_theme_latest.json` | `resources/read hhxg://kb/theme` |
+  | `hhxg_datasets` | `GET /datasets.json` | `resources/read hhxg://datasets/index` |
+
+  KB 信封里的数据与原来直拉的静态 JSON 是同一份文件，渲染沿用；按服务端真实形状改的地方：快照 `ladder.top_streak` 线上是对象 `{name, boards, industry}`（原按数组渲染，现兼容对象 / 数组 / 字符串），`ai_summary.cta` 导流句不进简评；两融表头带窗口起止日；数据集索引条目没有 `format` / `size_bytes` / `access` / `delivery`，格式按 latest 地址扩展名判、「过大」只在索引带 `size_bytes` 时标、没有任何文件地址的条目标「筛选」（会员专属全市场宽表）、缺更新频率渲染成「—」。
+- **`hhxg_calendar` 参数变更** 原 `type`（trading / delivery / earnings / unlock）+ `month`（YYYY-MM）改为只有 `month`（YYYYMM，默认当月，北京时间；也接受 YYYY-MM）。返回月度投资者事件（限售解禁 / 分红除权 / 新股申购与上市 / 可转债上市 / 股指期货、ETF 期权、富时 A50 交割 / LPR / 央行回笼 / 国债逆回购 / MSCI 审议等），文本按事件类型分组、每类最多列 25 条；全年交易日列表不再由本工具提供。`month` 形状不对本地拒绝、不发请求；该月没有事件日历返回「无结果：… 不存在」而不是报错。
+- **`api.js`** 新增 `mcpReadResource(token, uri, signal)`（resources/read，返回 `contents[0].text` 解析后的 JSON；只认 `hhxg://` URI），与 `mcpCall` 共用同一套请求层：545 等 5xx 与网络抖动重试一次、401 / 4xx / 业务错误不重试、响应 5MB 上限、`redirect: 'error'`、UA、错误脱敏。删除 `fetchPublic`。401 / 403 归一化：服务端新错误码 `MAX_REQUIRED` 与旧的 `API_ACCESS_REQUIRED` / `VIP_REQUIRED` / `REALTIME_MAX_REQUIRED` 都给「需要 Max 会员的 MCP Token」指引（带升级页与 Token 签发页深链），JSON-RPC 错误层带这些码时同样处理；Token 失效类（TOKEN_INVALID / VIP_EXPIRED 等）仍是「重新生成 Token」指引。工具结果层的 `MAX_REQUIRED` 与 `REALTIME_MAX_REQUIRED` 一样按「需要 Max」业务答复渲染。
+- **配置与日志** `Config` 只剩 `mcpToken`（描述：Max 会员的 MCP Token，都没有则所有工具不可用）；`enableVipTools` 删除（已无免费 / VIP 之分；旧 profile 残留该项不影响装载）。日志改为「已注册 13 个工具（token 来源：…）」。
+- **说明文案** 去掉全部「【VIP】」「【Max】」「免费」字样；`hhxg_strategy_signals` / `hhxg_realtime` 不再写「非 Max 会收到说明」「Pro 会员调用会返回需要 Max」。
+- **测试** 改为纯逻辑（fetch 全部打桩）：删除原「免费工具真实端点冒烟」；新增 13 个工具 / 名称唯一 / 全部有 channel、没 token 时 13 个工具 execute 返回指引且 fetch 调用数为 0、有 token 时 7 个改道工具发出的 JSON-RPC 形状（method / uri / 工具名 / arguments）与渲染断言；`contract.test.js` 新增 `apply()` 注册、Config 只剩 `mcpToken` 的契约（SDK 不在时跳过）。CI 删除打真实端点的 live-smoke 任务与 `HHXG_SKIP_NETWORK` 开关。
+
 ## 0.6.2 (2026-11-04)
 
 文案跟进版：`hhxg_realtime view=screen` 的 `limit` 上限随服务端从 50 提到 100。工具、参数 schema、数量不变。

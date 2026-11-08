@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: "23 12 * * 1-5"
 
 permissions:
   contents: read
@@ -30,24 +28,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Syntax check
         run: node --check lib/api.js && node --check lib/index.js && node --check lib/tools.js
-      - name: Deterministic tests
+      # 0.7.0 起全部测试为纯逻辑（fetch 打桩，不请求 hhxg.top）；原打真实公开端点的 live-smoke 任务随公开端点下线一并删除
+      - name: Tests
         run: npm test
-        env:
-          HHXG_SKIP_NETWORK: "1"
       - name: Package dry run
         run: npm pack --dry-run
-
-  live-smoke:
-    name: Live endpoint smoke test
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - name: Test real hhxg.top endpoints
-        run: npm test
