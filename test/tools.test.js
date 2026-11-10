@@ -146,14 +146,14 @@ test('没 token：13 个工具都返回开通指引且不发请求（参数合�
 
 test('开通指引：写明 13 个工具都要 Max 的 MCP Token、cordis.patch.yml 写法与深链；不再提免费工具与 Pro 保护期', () => {
   const text = tokenRequiredMessage('hhxg_realtime')
-  assert.match(text, /^工具 hhxg_realtime 需要 Max 会员的 MCP Token/)
+  assert.match(text, /^工具 hhxg_realtime 需要 Max 会员的 AI 接入 Token（MCP Token）/)
   assert.match(text, /13 个工具/)
   assert.match(text, /cordis\.patch\.yml/)
   assert.match(text, /id: hhxg-market/)
   assert.match(text, /mcpToken/)
   assert.match(text, /HHXG_MCP_TOKEN/)
   assert.ok(text.includes(UPGRADE_URL), '升级页深链')
-  assert.ok(text.includes(TOKEN_URL), 'Token 签发页深链（开发者接入页）')
+  assert.ok(text.includes(TOKEN_URL), 'Token 签发页深链（AI 接入页 developer.html）')
   assert.doesNotMatch(text, /account\/mcp\.html/, '旧地址只剩跳转壳，不再出现在文案里')
   assert.doesNotMatch(text, /设置 → 插件/)
   assert.doesNotMatch(text, /免费|原到期日|保护期|永久|SLA/)

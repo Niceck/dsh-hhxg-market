@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.1 (2026-11-10)
+
+只改文档与提示文案，工具名、参数、取数通道不变。
+
+- **叫法统一为「AI 接入 Token」** README、`cordis.patch.yml` 注释、`mcpToken` 配置项说明、开通指引与 Token 报错里面向用户的「MCP Token」改称「AI 接入 Token」（与站内「AI 接入」页 developer.html 一致，首次出现处注明「即 MCP Token」）。配置键 `mcpToken`、环境变量 `HHXG_MCP_TOKEN` 不变，已签发的 Token 不用换。
+- **README** 开头加中英双语一句话定位与接入说明链接 `https://hhxg.top/developer.html#mcp`；安装说明把「在 DSH 插件安装入口输入 GitHub 地址 `https://github.com/Niceck/dsh-hhxg-market`」放到命令行安装之前。
+- **package.json** `homepage` 改为 `https://hhxg.top/developer.html#mcp`；`keywords` 增加 `mcp` `mcp-server` `a-stock` `stock-screener` `claude` `cursor` `ai-agent` `deepseek`。
+
 ## 0.7.0 (2026-11-08)
 
 全部工具改需 Max 会员的 MCP Token：站长 2026-11-08 拍板删除一切免费 AI 接入，插件不再分「免费 / VIP」。工具名与数量（13 个）不变；`hhxg_calendar` 参数变更（见下）；`enableVipTools` 配置项删除。服务端随 STOCK-REPORT 2026-11-08 的 Max 收口（`docs/plans/2026-11-08-max-only-ai-and-data.md`）上线：4 个公开端点 `/api/snapshot` `/api/news` `/api/margin` `/api/calendar` 已删除（返回 404），公开目录不再对外给下载地址。

@@ -6,12 +6,12 @@
 # inject 必填：等待 tools 服务就绪后再激活，否则 apply 可能在 tools
 # 服务存在之前运行，所有工具注册静默失败。
 #
-# 13 个工具都要 Max 会员的 MCP Token：在你 profile 的 cordis.patch.yml 里按 id 补 config
+# 13 个工具都要 Max 会员的 AI 接入 Token（即 MCP Token）：在你 profile 的 cordis.patch.yml 里按 id 补 config
 # （dsh 暂不渲染第三方插件的配置项，没有设置界面可填；改完重启 dsh 生效）：
 #   - update:
 #       - id: hhxg-market
 #         config:
-#           mcpToken: "<hhxg.top/developer.html#mcp 生成的 MCP Token>"
+#           mcpToken: "<hhxg.top/developer.html#mcp 生成的 AI 接入 Token>"
 # 从终端启动 dsh 时也可以不改文件：配置留空，设环境变量 HHXG_MCP_TOKEN。
 # 两者都没有时工具仍会注册，调用返回开通指引（不发请求）。
 - insert:

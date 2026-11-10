@@ -1,16 +1,26 @@
 # dsh-hhxg-market
 
+> **一句话定位**：把恢恢量化（hhxg.top）的 A 股行情与量化数据 MCP server 桥接成 DeepSeek Harness 的原生工具，面向 Max 会员，只读研究用途。
+> **In one line**: an A-share market data MCP bridge for DeepSeek Harness (dsh) — 13 read-only research tools backed by the hhxg MCP server (`https://hhxg.top/mcp/rpc`), for Max members.
+> 接入说明 / Docs：<https://hhxg.top/developer.html#mcp>（「AI 接入」页，签发 AI 接入 Token、MCP 与数据 API 的接法都在这里）
+
 [恢恢量化 hhxg.top](https://hhxg.top) A股量化数据插件 for [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/dsh)。
 
 把 A股日报快照、财经快讯、融资融券、市场情绪、题材热度、条件选股、盘中实时等量化数据变成 dsh Agent 的原生工具——问一句"今天市场情绪怎么样"，模型自己调工具拿真实数据回答。
 
-**13 个工具**：日报快照、财经快讯、融资融券、投资者事件日历、市场情绪、题材热度、数据集目录、个股综合诊断、条件选股与量化策略预设（约 270 列，支持两个指标互相比较，返回全市场命中数）、连板晋级预测、异动历史、数据集查询、盘中实时行情与指标，填入 Max 会员的 [MCP Token](https://hhxg.top/developer.html#mcp) 即用。
+**13 个工具**：日报快照、财经快讯、融资融券、投资者事件日历、市场情绪、题材热度、数据集目录、个股综合诊断、条件选股与量化策略预设（约 270 列，支持两个指标互相比较，返回全市场命中数）、连板晋级预测、异动历史、数据集查询、盘中实时行情与指标，填入 Max 会员的 [AI 接入 Token](https://hhxg.top/developer.html#mcp)（即 MCP Token）即用。
 
 实测记录：[我把选股条件直接「说」给 AI，它不但筛完全市场，还自己设计了 5 套策略](https://zhuanlan.zhihu.com/p/2100516061787570728)（知乎，0.5.0 条件选股的 5 组对话 + 5 套策略逐套计数，含可筛字段分组与限制说明）。
 
 ## 安装
 
-从 npm 安装（推荐，2026-11-01 起发布为 [`@hhxg/dsh-hhxg-market`](https://www.npmjs.com/package/@hhxg/dsh-hhxg-market)）：
+**方式一：在 DSH 的插件安装入口输入 GitHub 地址**（不用命令行）：
+
+```
+https://github.com/Niceck/dsh-hhxg-market
+```
+
+**方式二：命令行**，从 npm 安装（推荐，2026-11-01 起发布为 [`@hhxg/dsh-hhxg-market`](https://www.npmjs.com/package/@hhxg/dsh-hhxg-market)）：
 
 ```bash
 dsh plugin --profile web add @hhxg/dsh-hhxg-market
@@ -28,7 +38,7 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 
 ## 工具一览
 
-全部 13 个工具都经 hhxg MCP server（`https://hhxg.top/mcp/rpc`）取数，都需要 Max 会员的 MCP Token；没有 Token 时工具仍会注册，调用返回开通指引（不发请求）。
+全部 13 个工具都经 hhxg MCP server（`https://hhxg.top/mcp/rpc`）取数，都需要 Max 会员的 AI 接入 Token；没有 Token 时工具仍会注册，调用返回开通指引（不发请求）。
 
 | 工具 | 说明 | 取数通道 |
 |---|---|---|
@@ -50,8 +60,8 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 
 **解锁步骤**：
 
-1. 到 [hhxg.top/vip.html](https://hhxg.top/vip.html) 开通 Max 会员（月付 ¥99 / 年付 ¥999）；MCP Token 只签给 Max
-2. 到 [hhxg.top/developer.html#mcp](https://hhxg.top/developer.html#mcp) 生成 MCP Token（有效期跟随会员到期；旧地址 `account/mcp.html` 会自动跳转过来）
+1. 到 [hhxg.top/vip.html](https://hhxg.top/vip.html) 开通 Max 会员（月付 ¥99 / 年付 ¥999）；AI 接入 Token 只签给 Max
+2. 到 [hhxg.top/developer.html#mcp](https://hhxg.top/developer.html#mcp) 生成 AI 接入 Token（有效期跟随会员到期；旧地址 `account/mcp.html` 会自动跳转过来）
 3. 把 Token 写进你 profile 的 `cordis.patch.yml`（dsh 目前不渲染第三方插件的配置项，没有设置界面可填；保存后重启 dsh 生效）：
 
 ```yaml
@@ -59,12 +69,12 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 - update:
     - id: hhxg-market
       config:
-        mcpToken: "<你的 MCP Token>"
+        mcpToken: "<你的 AI 接入 Token>"
 ```
 
-从终端启动 dsh 的话也可以不改文件：配置留空，设环境变量 `HHXG_MCP_TOKEN=<你的 MCP Token>`（显式配置非空时以配置为准；GUI 启动的 dsh 不一定继承 shell 环境）。
+从终端启动 dsh 的话也可以不改文件：配置留空，设环境变量 `HHXG_MCP_TOKEN=<你的 AI 接入 Token>`（显式配置非空时以配置为准；GUI 启动的 dsh 不一定继承 shell 环境）。
 
-未填 Token 时 13 个工具仍会注册为引导占位（调用返回开通指引，不发请求）。Token 对应的会员不是 Max（服务端返回 `MAX_REQUIRED` / `API_ACCESS_REQUIRED`）时，工具返回「需要 Max 会员的 MCP Token」的说明并附升级页地址。
+未填 Token 时 13 个工具仍会注册为引导占位（调用返回开通指引，不发请求）。Token 对应的会员不是 Max（服务端返回 `MAX_REQUIRED` / `API_ACCESS_REQUIRED`）时，工具返回「需要 Max 会员的 AI 接入 Token」的说明并附升级页地址。
 
 `hhxg_strategy_signals` 的 12 个策略标识里有 3 个（`oversold_rebound` / `macd_death_cross` / `distribution`）暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）；前两个可以直接用 0.6.0 的两列比较 `filters` 写出来（工具说明里给了写法），`distribution` 需要分位数，写不出来。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；自定义条件直接用本工具的 `filters`。能写成 `filters` 的条件都应一次交给服务端筛完，不要翻页取回再让模型自己比（2026-11-03 实测：自己比 552 行漏了 5 只，标题总数还和表格对不上）。盘中 `hhxg_realtime view=screen` 没有派生列，但同样能用两列比较：多头排列 = `MA5 gt ref=MA10`、`MA10 gt ref=MA20`、`MA20 gt ref=MA60` 三条；两个字段须同为实时字段或同为盘后属性列。
 
@@ -76,7 +86,7 @@ dsh 原生支持 MCP。不装本插件、或想要全部 8 个 MCP 工具 + reso
 
 ```
 URL:    https://hhxg.top/mcp/rpc
-Header: Authorization: Bearer <你的 MCP Token>
+Header: Authorization: Bearer <你的 AI 接入 Token>
 ```
 
 本插件的价值是：工具输出针对模型阅读做了格式化（KB 信封 / 日历 / 数据集索引渲染成表格，盘后筛选结果首行给全市场命中数，盘中结果首行标出帧时效与日期），本地参数预检省掉必败的往返，业务性答复（无数据 / 需要 Max / 参数有误）不会被当成工具故障，以及桌面端 `hhxg_realtime` 的结果卡。

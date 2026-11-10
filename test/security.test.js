@@ -208,7 +208,7 @@ for (const status of [401, 403]) {
       for (const code of ['TOKEN_EXPIRED', 'TOKEN_INVALID', 'VIP_EXPIRED', 'AUTH_REQUIRED', 'VIP_BANNED']) {
         const { err, calls } = await withFetch(auth(code), call)
         assert.ok(err)
-        assert.match(err.message, /MCP Token 无效或已过期/)
+        assert.match(err.message, /^AI 接入 Token 无效或已过期/)
         assert.ok(err.message.includes(code))
         assert.ok(err.message.includes(TOKEN_URL), '指向当前的 Token 签发页')
         assert.ok(err.message.includes(UPGRADE_URL))
@@ -218,7 +218,7 @@ for (const status of [401, 403]) {
       for (const code of ['MAX_REQUIRED', 'API_ACCESS_REQUIRED', 'VIP_REQUIRED', 'REALTIME_MAX_REQUIRED']) {
         const { err, calls } = await withFetch(auth(code), call)
         assert.ok(err)
-        assert.match(err.message, new RegExp(`^需要 Max 会员的 MCP Token（${code}）`))
+        assert.match(err.message, new RegExp(`^需要 Max 会员的 AI 接入 Token（${code}）`))
         assert.ok(err.message.includes(UPGRADE_URL), '升级页深链')
         assert.ok(err.message.includes(TOKEN_URL), '升级后重新签 Token 的页面')
         assert.doesNotMatch(err.message, /无效或已过期|请求失败 HTTP/)
@@ -226,7 +226,7 @@ for (const status of [401, 403]) {
       }
       // 没带 errorCode：按 HTTP 状态归为 Token 失效
       const bare = await withFetch(() => new Response('', { status }), call)
-      assert.match(bare.err.message, new RegExp(`MCP Token 无效或已过期（HTTP ${status}）`))
+      assert.match(bare.err.message, new RegExp(`^AI 接入 Token 无效或已过期（HTTP ${status}）`))
     }
   })
 }
@@ -235,7 +235,7 @@ test('JSON-RPC 错误层带权益码（HTTP 200 + error.data.errorCode=MAX_REQUI
   const rpcErr = (data, message = '工具 get_realtime 为 Max 会员权益') => () =>
     new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32602, message, data } }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   const max = await withFetch(rpcErr({ errorCode: 'MAX_REQUIRED', trace_id: 't' }), () => mcpCall(TOKEN, 'get_realtime', { view: 'market' }))
-  assert.match(max.err.message, /^需要 Max 会员的 MCP Token（MAX_REQUIRED）/)
+  assert.match(max.err.message, /^需要 Max 会员的 AI 接入 Token（MAX_REQUIRED）/)
   assert.equal(max.calls, 1)
   const other = await withFetch(rpcErr({ errorCode: 'TOOL_NOT_FOUND' }, '工具不存在'), () => mcpCall(TOKEN, 'nope', {}))
   assert.match(other.err.message, /^hhxg MCP: 工具不存在$/)
