@@ -1,14 +1,14 @@
 # dsh-hhxg-market
 
 > **一句话定位**：把恢恢量化（hhxg.top）的 A 股行情与量化数据 MCP server 桥接成 DeepSeek Harness 的原生工具，面向 Max 会员，只读研究用途。
-> **In one line**: an A-share market data MCP bridge for DeepSeek Harness (dsh) — 13 read-only research tools backed by the hhxg MCP server (`https://hhxg.top/mcp/rpc`), for Max members.
+> **In one line**: an A-share market data MCP bridge for DeepSeek Harness (dsh) — 14 read-only research tools backed by the hhxg MCP server (`https://hhxg.top/mcp/rpc`) and data API (history-library download links), for Max members.
 > 接入说明 / Docs：<https://hhxg.top/developer.html#mcp>（「AI 接入」页，签发 AI 接入 Token、MCP 与数据 API 的接法都在这里）
 
 [恢恢量化 hhxg.top](https://hhxg.top) A股量化数据插件 for [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/dsh)。
 
 把 A股日报快照、财经快讯、融资融券、市场情绪、题材热度、条件选股、盘中实时等量化数据变成 dsh Agent 的原生工具——问一句"今天市场情绪怎么样"，模型自己调工具拿真实数据回答。
 
-**13 个工具**：日报快照、财经快讯、融资融券、投资者事件日历、市场情绪、题材热度、数据集目录、个股综合诊断、条件选股与量化策略预设（约 270 列，支持两个指标互相比较，返回全市场命中数）、连板晋级预测、异动历史、数据集查询、盘中实时行情与指标，填入 Max 会员的 [AI 接入 Token](https://hhxg.top/developer.html#mcp)（即 MCP Token）即用。
+**14 个工具**：日报快照、财经快讯、融资融券、投资者事件日历、市场情绪、题材热度、数据集目录、个股综合诊断、条件选股与量化策略预设（约 270 列，支持两个指标互相比较，返回全市场命中数）、连板晋级预测、异动历史、数据集查询（0.8.0 起含多年历史库，见[查历史数据](#查历史数据)）、盘中实时行情与指标、历史库下载链接（0.8.0 新增，见[批量下载历史库文件](#批量下载历史库文件)），填入 Max 会员的 [AI 接入 Token](https://hhxg.top/developer.html#mcp)（即 MCP Token）即用。
 
 实测记录：[我把选股条件直接「说」给 AI，它不但筛完全市场，还自己设计了 5 套策略](https://zhuanlan.zhihu.com/p/2100516061787570728)（知乎，0.5.0 条件选股的 5 组对话 + 5 套策略逐套计数，含可筛字段分组与限制说明）。
 
@@ -38,7 +38,7 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 
 ## 工具一览
 
-全部 13 个工具都经 hhxg MCP server（`https://hhxg.top/mcp/rpc`）取数，都需要 Max 会员的 AI 接入 Token；没有 Token 时工具仍会注册，调用返回开通指引（不发请求）。
+14 个工具都需要 Max 会员的 AI 接入 Token：13 个经 hhxg MCP server（`https://hhxg.top/mcp/rpc`）取数，`hhxg_history_download` 经数据 API（`GET https://hhxg.top/api/data/hist`，同一把 Token、同一套错误处理）；没有 Token 时工具仍会注册，调用返回开通指引（不发请求）。
 
 | 工具 | 说明 | 取数通道 |
 |---|---|---|
@@ -48,12 +48,13 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 | `hhxg_calendar` | 月度投资者事件日历（限售解禁 / 分红除权 / 新股申购与上市 / 可转债上市 / 股指期货、ETF 期权、富时 A50 交割 / LPR / 央行回笼 / 国债逆回购 / MSCI 审议等），按事件类型分组；`month` 为 YYYYMM，默认当月（北京时间） | `resources/read hhxg://calendar/{yyyymm}` |
 | `hhxg_sentiment` | 近 7 交易日市场情绪：涨停家数 / 最高连板 / 连板分布 / 热门行业与概念 | `resources/read hhxg://kb/sentiment` |
 | `hhxg_themes` | 当日题材概念热度榜 TOP 30（游资参与 / 涨停数 / 涨停占比） | `resources/read hhxg://kb/theme` |
-| `hhxg_datasets` | 全部数据集目录（id / 分类 / 格式 / 更新频率 / 能否用 `hhxg_query_dataset` 查询；会员专属的全市场宽表标「筛选」，不提供下载），`hhxg_query_dataset` 的 id 发现入口 | `resources/read hhxg://datasets/index` |
+| `hhxg_datasets` | 全部数据集目录（id / 分类 / 格式 / 更新频率 / 能否用 `hhxg_query_dataset` 查询；会员专属的全市场宽表标「筛选」，不提供下载；多年历史表标「历史库」并另列覆盖起止日期与取数示例，`category=历史库` 只看历史表），`hhxg_query_dataset` 的 id 发现入口 | `resources/read hhxg://datasets/index` |
 | `hhxg_diagnose_stock` | 个股综合诊断：日/周/月技术指标、异动评级、两融趋势、龙虎榜、涨停、大宗、公告、概念 | `tools/call diagnose_stock` |
 | `hhxg_strategy_signals` | A 股条件选股 / 指标筛选 / 全市场命中计数（最新盘后快照，约 270 列，含题材概念、股票池、财务等基本信息；数据是上一交易日收盘的快照、不含今天盘中行情，交易时段按最新价筛选请用 `hhxg_realtime view=screen`，0.6.1 起交易时段调本工具时结果首行会提醒）：`list_fields=true` 列出全部可筛字段与类型；`filters=[{field, op, value}]`（最多 8 条，op gt/gte/lt/lte/eq/ne/in/contains/not_null）自定义筛选，如日线均线多头排列 `{field:"日均线多头", op:"eq", value:1}`；两个数值字段互相比写 `{field, op, ref, scale}`（field op ref × scale，op 只能 gt/gte/lt/lte），如站上 20 日线 `{field:"收盘价", op:"gt", ref:"MA20"}`；题材概念 / 股票池 / 持股标签 / 游资席位是多值列，只用 contains / not_null；结果首行给全市场命中数 `total`（`limit` 1-100 只控制每页行数，只问数量设 `limit=1`），`sort` / `fields` / `cursor` 翻页；`strategy_id` 可选用 9 个策略预设（涨停 / 放量突破 / 缩量整理 / 九转买入 / 九转卖出 / KDJ 超买 / KDJ 超卖 / 暴跌预警 / MACD 金叉），与 `filters` 取交集 | `tools/call screen_stocks` |
 | `hhxg_predict_lianban` | 连板股次日晋级率预测（题材热度 / 行业热度 / 板高强度 3 因子） | `tools/call predict_lianban_promotion` |
 | `hhxg_stock_alerts` | 个股近 30 日异动历史（普通 / 临近严重 / 严重异动逐日记录） | `tools/call query_dataset`（`dataset_id=stock_alerts_history`） |
-| `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 截断查询（先用 `hhxg_datasets` 查合法 id 与是否可查） | `tools/call query_dataset` |
+| `hhxg_query_dataset` | 对数据集（JSON 与 300KB 以内的 CSV）做过滤 / 排序 / 选列 / 翻页查询，`path` 取嵌套子值、`date` 读历史分片；0.8.0 起能查多年历史库（`key` 股票代码 / 名称、板块名称，或 `date` 取全市场截面，`date_range` 限定区间，`fields` 选列，`cursor` 翻页；结果渲染成带中文表头的纯文本表格）。先用 `hhxg_datasets` 查合法 id 与是否可查 | `tools/call query_dataset` |
+| `hhxg_history_download` | 历史库批量下载（0.8.0 新增）：不带参数列出可下载的表与今日额度；`table` 列出该表全部周期（行数 / 大小）与字段对照；`table` + `period`（`YYYY` / `YYYYMM`，或 `fields`）给一条限时下载链接和一条 `curl` 下载命令。**只返回链接与命令，插件不下载、不写文件**；每次一个文件，批量下载逐个周期调用 | `GET /api/data/hist`（数据 API） |
 | `hhxg_realtime` | 盘中实时（交易日约 1 分钟一帧，盘后为当日收盘帧）：`view=market` 涨跌家数 / 涨跌停与炸板 / 涨停池与连板晋级率；`view=quotes` 指定个股（最多 30 只）的最新价与日 / 周 / 月指标；`view=screen` 全市场条件筛选（最多 8 条、返回最多 100 行、无翻页；交易时段的选股优先用它）；`view=fields` 可用字段与示例；`view=kline` 指定个股（最多 5 只）的日 K 序列（已完成交易日 ≤260 根，`codes × bars ≤ 1000`，`adj` 前复权 / 不复权）+ 实时帧那天未走完的 K（`live`；`comparable` 只有 `true` 才可与历史拼接，`false` 疑似除权 / 基准不一致，`null` 无法判断——缓存滞后、个股停牌或日历不可用，原因见 `live.reason`，缓存状态见 `history`）。盘中 MA / BBI / MACD / KDJ 等指标按最新价把帧交易日当天当作未走完的 K 线计算（不是上一交易日收盘的指标，`indicators.base_date` 只是历史基准日，结果里有【口径】行写明）。结果文本首行标出帧的时效与交易日，并带 `frame.status`（盘中实时 / 午间休市 / 收盘帧 / 非实时·上一交易日 / 非实时·延迟，首行与桌面端卡片徽标同一套文案）；不是 `live` 就不是此刻的数据。分钟 K 不提供（快照差分还原不了区间高低） | `tools/call get_realtime` |
 
 数据每个交易日盘后约 20:00 更新（快讯每小时；盘中实时交易时段约 1 分钟一帧）；非交易日返回最近一个交易日。
@@ -74,11 +75,11 @@ dsh plugin --profile web add github:Niceck/dsh-hhxg-market
 
 从终端启动 dsh 的话也可以不改文件：配置留空，设环境变量 `HHXG_MCP_TOKEN=<你的 AI 接入 Token>`（显式配置非空时以配置为准；GUI 启动的 dsh 不一定继承 shell 环境）。
 
-未填 Token 时 13 个工具仍会注册为引导占位（调用返回开通指引，不发请求）。Token 对应的会员不是 Max（服务端返回 `MAX_REQUIRED` / `API_ACCESS_REQUIRED`）时，工具返回「需要 Max 会员的 AI 接入 Token」的说明并附升级页地址。
+未填 Token 时 14 个工具仍会注册为引导占位（调用返回开通指引，不发请求）。Token 对应的会员不是 Max（服务端返回 `MAX_REQUIRED` / `API_ACCESS_REQUIRED`）时，工具返回「需要 Max 会员的 AI 接入 Token」的说明并附升级页地址。
 
 `hhxg_strategy_signals` 的 12 个策略标识里有 3 个（`oversold_rebound` / `macd_death_cross` / `distribution`）暂不能作为预设，调用会返回说明（`PRESET_NOT_SUPPORTED`）；前两个可以直接用 0.6.0 的两列比较 `filters` 写出来（工具说明里给了写法），`distribution` 需要分位数，写不出来。全市场指标全表（`quant_signal_pool`）自 2026-10-23 起为会员数据、不再提供下载地址；自定义条件直接用本工具的 `filters`。能写成 `filters` 的条件都应一次交给服务端筛完，不要翻页取回再让模型自己比（2026-11-03 实测：自己比 552 行漏了 5 只，标题总数还和表格对不上）。盘中 `hhxg_realtime view=screen` 没有派生列，但同样能用两列比较：多头排列 = `MA5 gt ref=MA10`、`MA10 gt ref=MA20`、`MA20 gt ref=MA60` 三条；两个字段须同为实时字段或同为盘后属性列。
 
-**版本对应**：0.7.0 起 13 个工具全部经 hhxg MCP server 取数（原直调公开端点的 7 个工具改走 `resources/read` 与 `search_documents`，服务端公开端点 `/api/snapshot` `/api/news` `/api/margin` `/api/calendar` 已于 2026-11-08 下线）；0.3.0 起进阶工具只调用服务端正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`，0.4.0 起加 `get_realtime`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，已于 2026-10-27 下线（服务端 0.5.0），0.2.x 的这两个工具已失效，请升级。
+**版本对应**：0.8.0 起 `hhxg_query_dataset` 转发 `key / fields / date / date_range / cursor / path / days`，能完整查服务端（server 0.7.0，2026-11-16）的多年历史库，0.7.x 只能把股票代码塞进 `filters`、给不了日期区间 / 选列 / 翻页；0.8.0 新增 `hhxg_history_download`（服务端的下载入口 `/api/data/hist` 上线前调用会返回「暂不支持」）；各版本改动见 [CHANGELOG](CHANGELOG.md)。0.7.0 起原有 13 个工具全部经 hhxg MCP server 取数（原直调公开端点的 7 个工具改走 `resources/read` 与 `search_documents`，服务端公开端点 `/api/snapshot` `/api/news` `/api/margin` `/api/calendar` 已于 2026-11-08 下线）；0.3.0 起进阶工具只调用服务端正式工具（`diagnose_stock` / `screen_stocks` / `predict_lianban_promotion` / `query_dataset`，0.4.0 起加 `get_realtime`）。0.2.x 调用的 `get_strategy_signals` / `get_stock_alerts_history` 在服务端 0.3.0 起只是别名，已于 2026-10-27 下线（服务端 0.5.0），0.2.x 的这两个工具已失效，请升级。
 
 ### 零代码替代方案（Max 用户）
 
@@ -89,11 +90,68 @@ URL:    https://hhxg.top/mcp/rpc
 Header: Authorization: Bearer <你的 AI 接入 Token>
 ```
 
-本插件的价值是：工具输出针对模型阅读做了格式化（KB 信封 / 日历 / 数据集索引渲染成表格，盘后筛选结果首行给全市场命中数，盘中结果首行标出帧时效与日期），本地参数预检省掉必败的往返，业务性答复（无数据 / 需要 Max / 参数有误）不会被当成工具故障，以及桌面端 `hhxg_realtime` 的结果卡。
+本插件的价值是：工具输出针对模型阅读做了格式化（KB 信封 / 日历 / 数据集索引渲染成表格，盘后筛选结果首行给全市场命中数，盘中结果首行标出帧时效与日期），本地参数预检省掉必败的往返，业务性答复（无数据 / 需要 Max / 参数有误）不会被当成工具故障，桌面端 `hhxg_realtime` 的结果卡，以及历史库下载链接（MCP 里没有这个工具；直连的话用数据 API `GET https://hhxg.top/api/data/hist`，同一把 Token）。
+
+## 查历史数据
+
+「历史库」是服务端按表发布的多年历史数据（财务指标与三张报表、业绩预告 / 快报、每日估值、日 / 周 / 月 K、同花顺板块日线、个股 / 板块 / 大盘资金流、龙虎榜、涨跌停与连板、游资、两融、大宗、沪深港通、股东户数、十大股东等），用 `hhxg_query_dataset` 查，表 id 以 `hist_` 开头。**哪些表能查以 `hhxg_datasets` 列出的为准**（标「历史库」，或传 `category=历史库` 只看历史表）：服务器上还没发布的表不会出现在清单里，按 id 硬查会返回「未找到」。
+
+取法：
+
+- 必须给 `key` 或 `date` 之一。`key` 是股票代码（`600519` / `600519.SH`）或股票、板块名称（`贵州茅台`、`半导体`，名称须精确匹配），逗号分隔最多 20 个；`date` 取某一天 / 某一期的全市场截面（`YYYY-MM-DD` 或 `YYYYMMDD`）。
+- `date_range=["起", "止"]` 和 `key` 一起用，限定区间，不限的一端写 `null`（写空串 `""` 也行）；`fields` 选列（英文列名或中文名，不写给默认列）；`sort` 为 `asc` / `desc`（按日期）；`limit` 1-500。
+- 结果首行写明表名、本页行数、全表覆盖范围与库更新时间；还有下一页时首行给出 `cursor="…"`，原样传回、其余参数不变即可翻页。名称解析结果与没找到的代码 / 名称各有一行说明。
+- 历史库不支持 `path` / `days`；要整张表、整年的数据请下载文件（见下一节），不要翻几十页拼。
+
+示例对话与对应的工具调用：
+
+| 你问 | 模型调用 |
+|---|---|
+| 「贵州茅台这几年的 ROE 和净利润增速怎么变的？」 | `hhxg_query_dataset(dataset_id="hist_fin_indicator", key="600519.SH", fields=["roe", "netprofit_yoy"])` |
+| 「半导体板块今年以来每天涨跌幅多少？」 | `hhxg_query_dataset(dataset_id="hist_ths_daily", key="半导体", date_range=["2026-01-01", null], fields=["close", "pct_change"])` |
+| 「11 月 13 日龙虎榜上了哪些股票？」 | `hhxg_query_dataset(dataset_id="hist_top_list", date="2026-11-13")`（按日期取当天全市场截面）；首行给了 `cursor` 就带上它再调一次（其余参数不变），直到「没有下一页」 |
+
+结果样例（节选）：
+
+```
+历史库 「个股财务指标（按报告期）」（hist_fin_indicator）｜本页 2 行｜全表覆盖 2024-09-30 至 2025-03-31（共 5 行）｜库更新于 2026-11-16 01:25｜还有下一页：其余参数不变，加 cursor="20241231|600519.SH" 再查
+列名（fields 参数用这些名字，也认表头中文名）：end_date、ts_code、ann_date、roe、eps
+报告期｜股票代码｜公告日｜ROE(净资产收益率)（%）｜每股收益(EPS)（元）
+20250331｜600519.SH｜20250430｜10.5｜21.4
+20241231｜600519.SH｜20250403｜36｜68.6
+```
+
+## 批量下载历史库文件
+
+历史库也按「一张表一个周期（年或月）一个文件」打包成 `.csv.gz`（UTF-8 带 BOM、中文表头），`hhxg_history_download` 负责拿限时下载链接。**它只把链接和一条 `curl` 命令交给模型，插件自己不下载、不写文件**；要不要执行、存到哪里由你（或你允许的终端工具）决定。
+
+三步：
+
+1. 不带参数：列出可下载的表（表名、标题、周期起止、周期数、行数、大小）与今天的额度。
+2. `table="hist_fin_indicator"`：列出这张表的全部周期（每个周期的行数、大小、数据起止日期）与字段对照文件（`period: "fields"`，列名、中文名与单位）。
+3. `table="hist_fin_indicator", period="2024"`：签发一条限时下载链接，结果里有链接、文件名、行数、大小、sha256、过期时间，以及可直接执行的 `curl --fail -o "<文件名>" "<链接>"` 和校验命令（直链不重定向，所以不带 `-L`；`--fail` 不会把错误页存成数据文件；当前目录下的同名文件会被覆盖）。
+
+- 每次调用只签一个文件，批量下载逐个周期调用；链接有效期（缺省 15 分钟内开始下载）与每个会员每天的不同文件数上限（缺省 200 个，当天重复取同一文件的链接不另计）都以结果里写的为准——插件按接口返回值展示，不另写一份。
+- 链接即凭证、不绑 IP，不要转发；请单线程下载，过期后断点续传也要重新取链接。
+- 安全：链接只认站方下载地址 `https://query.yzzt.top[:2087]/dl/<表>/<周期文件>?m=…&e=…&s=…`（主机写死在插件里，路径与查询串与服务端格式逐字一致），别的主机、后缀混淆的主机、形态不符的路径一律不展示、不生成命令；文件名还要与链接自洽（`<表>_<周期文件>`，如 `hist_fin_indicator_2024.csv.gz`）才生成 `curl` 命令，否则只给链接并说明。站方换下载域名时需要升级插件。
+- 额度用完（`DOWNLOAD_QUOTA_EXCEEDED`）转述服务端文案（区分「今天的不同文件数到上限」与「同一文件今天的签发次数到上限」，北京时间 0 点重置）；参数不对、没有这个文件、文件正在更新时给插件内置的固定说明与下一步，不转述服务端原文；下载服务暂不可用时提示稍后再试；服务端下载入口还没上线时返回「暂不支持」。
+
+结果样例（签发一条链接，签名已省略）：
+
+```
+历史库下载链接｜hist_fin_indicator 周期 2024｜3 行｜561 B｜数据 2024-09-30 至 2024-12-31
+链接：https://query.yzzt.top:2087/dl/hist_fin_indicator/2024.csv.gz?m=…&e=…&s=…
+文件名：hist_fin_indicator_2024.csv.gz
+sha256：acdc1cda57bc9e38ad82894a53c7766f2ebb179ccae6b02304626fa858b6fbbf
+有效期：链接 15 分钟内有效，须在北京时间 2026-11-17 10:15 前开始下载，过期后断点续传也要重新取链接。
+下载命令：curl --fail -o "hist_fin_indicator_2024.csv.gz" "https://query.yzzt.top:2087/dl/hist_fin_indicator/2024.csv.gz?m=…&e=…&s=…"
+校验：sha256sum "hist_fin_indicator_2024.csv.gz"（macOS 用 shasum -a 256 "hist_fin_indicator_2024.csv.gz"），结果应等于上面的 sha256。
+额度：今日已用 1 / 200 个不同文件（每个会员每天最多 200 个），还剩 199 个，北京时间 2026-11-18 00:00 重置。本次计入额度；这个文件今天第 1 次取链接（同一文件每天最多 24 次）。
+```
 
 ## 设计约定
 
-- **只读（research-only）**：本插件只提供行情与研究数据，不下单、不划转资金，也不存在任何交易执行接口。
+- **只读（research-only）**：本插件只提供行情与研究数据，不下单、不划转资金，也不存在任何交易执行接口；历史库下载只返回链接与命令，插件不下载、不写文件。
 - **凭证最小暴露**：Token 仅用于请求的 `Authorization` 头，不写盘、不打日志（日志只记「来自配置 / 环境变量 / 未配置」）；错误信息经脱敏处理，不回显 Token。Token 本体只存在于你本机的 profile 配置或你自己设置的环境变量里（环境变量对同进程插件与继承环境的子进程可见，不是保险库）。
 - **上游文本消毒**：新闻标题、题材名、事件说明等第三方文本进入模型上下文前统一清洗（删不可见字符、压平控制字符、断开链接/图片语法），降低数据侧 prompt injection 风险。
 - **免责声明**：所有数据仅供研究参考，不构成投资建议。数据可能存在延迟或缺失，据此操作风险自负。

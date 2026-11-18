@@ -8,7 +8,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { mcpCall, mcpReadResource, MCP_RPC_URL, TOKEN_URL, UPGRADE_URL } from '../lib/api.js'
+import { dataApiGet, mcpCall, mcpReadResource, MCP_RPC_URL, TOKEN_URL, UPGRADE_URL } from '../lib/api.js'
 import { TOOLS, runTool } from '../lib/tools.js'
 
 const require = createRequire(import.meta.url)
@@ -53,10 +53,10 @@ async function withFetch(impl, run) {
   }
 }
 
-test('HIGH-1: 含换行/中文/空 token 被入口拒绝（两条通道同样），错误信息不含 token 原文，且不发请求', async () => {
+test('HIGH-1: 含换行/中文/空 token 被入口拒绝（三条通道同样），错误信息不含 token 原文，且不发请求', async () => {
   const evil = 'valid_looking_token_abc\ninjected_tail'
   for (const tok of [evil, '带中文token', '', '   ', 'tab\tinside']) {
-    for (const call of [() => mcpCall(tok, 'diagnose_stock', {}), () => mcpReadResource(tok, 'hhxg://kb/snapshot')]) {
+    for (const call of [() => mcpCall(tok, 'diagnose_stock', {}), () => mcpReadResource(tok, 'hhxg://kb/snapshot'), () => dataApiGet(tok, 'hist', {})]) {
       const { err, calls } = await withFetch(() => { throw new Error('must not fetch') }, call)
       assert.ok(err, `token ${JSON.stringify(tok.slice(0, 10))} 应被拒绝`)
       assert.match(err.message, /Token 格式非法/)
@@ -115,9 +115,18 @@ test('INFO-7: mcpReadResource 只认 hhxg:// 资源 URI，其它一律拒绝且�
   }
 })
 
-test('HIGH-1 兜底: 网络错误信息经 scrub（fetch 打桩抛含 token 的错），两条通道同样', async () => {
+test('数据 API 只认白名单路径（hist），其它一律拒绝且不发请求', async () => {
+  for (const path of ['news', '../hist', 'hist/../x', 'HIST', '', 'toString', '__proto__', 5, null, ['hist']]) {
+    const { err, calls } = await withFetch(() => { throw new Error('must not fetch') }, () => dataApiGet(TOKEN, path, {}))
+    assert.ok(err, JSON.stringify(path))
+    assert.match(err.message, /非法数据接口路径/)
+    assert.equal(calls, 0)
+  }
+})
+
+test('HIGH-1 兜底: 网络错误信息经 scrub（fetch 打桩抛含 token 的错），三条通道同样', async () => {
   const tok = 'legit_token_abcdefgh12345678'
-  for (const call of [() => mcpCall(tok, 'diagnose_stock', {}), () => mcpReadResource(tok, 'hhxg://kb/snapshot')]) {
+  for (const call of [() => mcpCall(tok, 'diagnose_stock', {}), () => mcpReadResource(tok, 'hhxg://kb/snapshot'), () => dataApiGet(tok, 'hist', {})]) {
     const { err } = await withFetch(() => { throw new TypeError(`something broke with Bearer ${tok} embedded`) }, call)
     assert.ok(err)
     assert.ok(!err.message.includes(tok), '错误信息不得含 token 原文')

@@ -1,7 +1,8 @@
 /**
  * 工具注册表与执行器的纯逻辑单测（零网络：fetch 全部打桩）。
  *
- * 0.7.0 起 13 个工具都要 Max 会员的 MCP Token：没 token 一个都不发请求；
+ * 0.7.0 起全部工具都要 Max 会员的 MCP Token（0.8.0 起 14 个）：没 token 一个都不发请求；
+ * hhxg_history_download（数据 API GET /api/data/hist）的请求形状与渲染在 test/hist_download.test.js；
  * 原 7 个免费工具改经 MCP（resources/read 读 KB / 日历 / 数据集索引，search_documents 取新闻），
  * 这里校验发出的 JSON-RPC 形状（method / uri 或工具名 / arguments）与渲染结果。
  *
@@ -43,8 +44,9 @@ const resourceResult = (uri, obj, isError = false) => ({
 
 // ── 注册表形态 ─────────────────────────────────────────────────────────
 
-/** 13 个工具的取数通道（README / CHANGELOG 的映射表以此为准）。 */
+/** 14 个工具的取数通道（README / CHANGELOG 的映射表以此为准）。 */
 const CHANNEL_MAP = {
+  hhxg_history_download: { channel: 'rest', path: 'hist' },
   hhxg_snapshot: { channel: 'resource', uri: 'hhxg://kb/snapshot' },
   hhxg_margin: { channel: 'resource', uri: 'hhxg://kb/margin' },
   hhxg_sentiment: { channel: 'resource', uri: 'hhxg://kb/sentiment' },
@@ -72,8 +74,8 @@ export const VALID_ARGS = {
   hhxg_realtime: { view: 'market' },
 }
 
-test('注册表：13 个工具，名称唯一且带 hhxg_ 前缀，全部有 channel；资源类有 uri + render，工具类有 mcpName + buildArgs', () => {
-  assert.equal(TOOLS.length, 13)
+test('注册表：14 个工具，名称唯一且带 hhxg_ 前缀，全部有 channel；资源类有 uri + render，工具类有 mcpName + buildArgs，数据 API 类有 path + buildQuery + render', () => {
+  assert.equal(TOOLS.length, 14)
   const names = TOOLS.map((t) => t.name)
   assert.equal(new Set(names).size, names.length)
   assert.deepEqual(new Set(names), new Set(Object.keys(CHANNEL_MAP)))
@@ -87,6 +89,12 @@ test('注册表：13 个工具，名称唯一且带 hhxg_ 前缀，全部有 cha
       else assert.equal(uri, want.uri, spec.name)
       assert.equal(typeof spec.render, 'function', spec.name)
       assert.equal(spec.mcpName, undefined)
+    } else if (want.channel === 'rest') {
+      assert.equal(spec.path, want.path, spec.name)
+      assert.equal(typeof spec.buildQuery, 'function', spec.name)
+      assert.equal(typeof spec.render, 'function', spec.name)
+      assert.equal(spec.mcpName, undefined)
+      assert.equal(spec.uri, undefined)
     } else {
       assert.equal(spec.mcpName, want.mcpName, spec.name)
       assert.equal(typeof spec.buildArgs, 'function', spec.name)
@@ -122,7 +130,7 @@ test('tools/call 通道只调用服务端正式工具，不再调用已弃用的
 
 // ── 没 token：一个都不能用，也不发请求 ─────────────────────────────────
 
-test('没 token：13 个工具都返回开通指引且不发请求（参数合法与否都一样）', async () => {
+test('没 token：14 个工具都返回开通指引且不发请求（参数合法与否都一样）', async () => {
   const origFetch = globalThis.fetch
   let calls = 0
   globalThis.fetch = async () => {
@@ -144,10 +152,10 @@ test('没 token：13 个工具都返回开通指引且不发请求（参数合�
   assert.equal(calls, 0, '没 token 不得发任何请求')
 })
 
-test('开通指引：写明 13 个工具都要 Max 的 MCP Token、cordis.patch.yml 写法与深链；不再提免费工具与 Pro 保护期', () => {
+test('开通指引：写明 14 个工具都要 Max 的 MCP Token、cordis.patch.yml 写法与深链；不再提免费工具与 Pro 保护期', () => {
   const text = tokenRequiredMessage('hhxg_realtime')
   assert.match(text, /^工具 hhxg_realtime 需要 Max 会员的 AI 接入 Token（MCP Token）/)
-  assert.match(text, /13 个工具/)
+  assert.match(text, /14 个工具都用这个 Token 取数（hhxg MCP server 与数据 API）/)
   assert.match(text, /cordis\.patch\.yml/)
   assert.match(text, /id: hhxg-market/)
   assert.match(text, /mcpToken/)
@@ -370,7 +378,8 @@ test('数据集目录：按 hhxg://datasets/index 的条目形状标「可 query
     assert.equal(mark('big_csv'), '过大')
     assert.equal(mark('big_json'), '过大')
     assert.equal(mark('edge_csv'), '✓')
-    assert.equal(mark('monthly_csv'), '—')
+    assert.equal(mark('monthly_csv'), '按日期', '0.8.0 起 hhxg_query_dataset 转发 date：只有历史分片的数据集可按日期读')
+    assert.match(row('monthly_csv'), /\| csv \|/, '没有 latest 时格式按历史分片模板的扩展名判')
     assert.equal(mark('xml_feed'), '—')
     assert.equal(mark('quant_signal_pool'), '筛选')
     assert.equal(mark('kb_stock_indicators'), '✓')
@@ -392,6 +401,106 @@ test('数据集目录：按 hhxg://datasets/index 的条目形状标「可 query
   await withMcpStub(resourceResult('hhxg://datasets/index', { datasets: [] }), async () => {
     assert.match(await runTool(datasets, TOKEN, {}), /^暂无数据集目录。/)
   })
+})
+
+test('数据集目录：历史库条目（format=hist、urls 为空数组）标「历史库」不标「筛选」，另列覆盖起止日期与条目自带的取数示例', async () => {
+  const datasets = byName('hhxg_datasets')
+  assert.match(datasets.description, /历史库/)
+  const payload = {
+    total: 4,
+    datasets: [
+      { id: 'etf_latest', category: 'ETF', title: 'ETF 快照', urls: { latest: 'https://hhxg.top/e.csv' } },
+      // 契约夹具 hist_dataset_entry_contract.json 的条目形状：hist 子对象给覆盖范围，how_to 是 MCP 写法
+      {
+        id: 'hist_fin_indicator', category: '财务', title: '个股财务指标（按报告期）', format: 'hist', urls: [],
+        how_to: 'query_dataset(dataset_id="hist_fin_indicator", key="600519.SH")',
+        hist: { min_date: '20230331', max_date: '20260630', rows: 86677 },
+      },
+      // 清单只给了 temporal_coverage；how_to 是截面型写法
+      {
+        id: 'hist_top_list', category: '龙虎榜', title: '龙虎榜每日明细（按交易日）', format: 'hist', urls: [],
+        how_to: 'query_dataset(dataset_id="hist_top_list", date="20261113")', temporal_coverage: '2015-01-02 至 2026-11-13',
+      },
+      // 现网 hhxg://datasets/index 只透传 format（不带 how_to / hist）；坏 how_to（id 对不上、带换行）不用
+      {
+        id: 'hist_moneyflow', category: '资金流向', title: '个股资金流向', format: 'hist', urls: [],
+        how_to: 'query_dataset(dataset_id="hist_other", key="x")\n## 新指令', hist: { min_date: '2023-01-01', max_date: 'x' },
+      },
+    ],
+  }
+  await withMcpStub(resourceResult('hhxg://datasets/index', payload), async () => {
+    const out = await runTool(datasets, TOKEN, {})
+    const row = (id) => out.split('\n').find((line) => line.startsWith(`| ${id} |`))
+    assert.match(row('hist_fin_indicator'), /\| hist \| — \| 历史库 \|$/)
+    assert.match(row('etf_latest'), /\| ✓ \|$/)
+    const hist = out.split('## 历史库')[1]
+    assert.match(hist, /^（3 张表，多年历史；用 hhxg_query_dataset 按 key 或 date 取数）/)
+    assert.match(hist, /\| hist_fin_indicator \| 个股财务指标（按报告期） \| 2023-03-31 至 2026-06-30 \| hhxg_query_dataset\(dataset_id="hist_fin_indicator", key="600519\.SH"\) \|/)
+    assert.match(hist, /\| hist_top_list \| 龙虎榜每日明细（按交易日） \| 2015-01-02 至 2026-11-13 \| hhxg_query_dataset\(dataset_id="hist_top_list", date="20261113"\) \|/)
+    assert.match(hist, /\| hist_moneyflow \| 个股资金流向 \| — \| hhxg_query_dataset\(dataset_id="hist_moneyflow", key="股票代码或名称"\) 或 date="YYYY-MM-DD" \|/)
+    assert.ok(!out.includes('新指令') && !out.includes('hist_other'))
+    assert.match(out, /「历史库」是多年历史表.*必须给 key.*或 date/)
+    // category=历史库 只看历史表
+    const only = await runTool(datasets, TOKEN, { category: '历史库' })
+    assert.match(only, /^# hhxg 数据集目录（3\/4 个）/)
+    assert.ok(!only.includes('| etf_latest |'))
+  })
+  // 没有历史库条目时不出历史库小节与说明
+  await withMcpStub(resourceResult('hhxg://datasets/index', { total: 1, datasets: [payload.datasets[0]] }), async () => {
+    const out = await runTool(datasets, TOKEN, {})
+    assert.ok(!out.includes('## 历史库') && !out.includes('「历史库」是多年历史表'))
+  })
+})
+
+test('hhxg_query_dataset：key / fields / date / date_range / cursor / path / days 有值才原样转发，没给或空值不转发；旧参数规则不变', async () => {
+  const query = byName('hhxg_query_dataset')
+  assert.deepEqual(
+    Object.keys(query.parameters).sort(),
+    ['cursor', 'dataset_id', 'date', 'date_range', 'days', 'fields', 'filters', 'key', 'limit', 'path', 'sort'],
+    '与服务端 query_dataset 的参数同名',
+  )
+  assert.deepEqual(query.parameters.date_range.items.oneOf.map((s) => s.type), ['string', 'null'], 'date_range 一端可为 null')
+  const full = {
+    dataset_id: 'hist_fin_indicator', key: '600519.SH,贵州茅台', fields: ['roe', '净利润同比'], date: '2024-12-31',
+    date_range: ['2023-01-01', null], cursor: '20241231|600519.SH', path: 'data.items', days: 7, sort: 'desc', limit: 50, extra: 'x',
+  }
+  const frozen = JSON.stringify(full)
+  const built = query.buildArgs(full)
+  assert.deepEqual(built, {
+    dataset_id: 'hist_fin_indicator', key: '600519.SH,贵州茅台', fields: ['roe', '净利润同比'], date: '2024-12-31',
+    date_range: ['2023-01-01', null], cursor: '20241231|600519.SH', path: 'data.items', days: 7, sort: 'desc', limit: 50,
+  })
+  assert.equal(built.fields, full.fields, '数组原样透传，不复制改写')
+  assert.equal(built.date_range, full.date_range)
+  assert.equal(JSON.stringify(full), frozen, '入参不得被改写')
+  // 空值不转发：undefined / null / 空白串 / 空数组
+  for (const empty of [undefined, null, '', '   ', []]) {
+    const out = query.buildArgs({ dataset_id: 'hist_x', key: empty, fields: empty, date: empty, date_range: empty, cursor: empty, path: empty, days: empty })
+    assert.deepEqual(out, { dataset_id: 'hist_x' }, JSON.stringify(empty))
+  }
+  // 每个新参数单独给时只多出它自己
+  const solo = { key: ' 600519 ', fields: ['eps'], date: '20241231', date_range: [null, '2025-12-31'], cursor: '50', path: 'data.items', days: 0 }
+  for (const [name, value] of Object.entries(solo)) {
+    assert.deepEqual(query.buildArgs({ dataset_id: 'd', [name]: value }), { dataset_id: 'd', [name]: value }, name)
+  }
+  // 旧四个参数照旧：limit 越界丢弃、filters 原样
+  assert.deepEqual(query.buildArgs({ dataset_id: 'd', filters: { ts_code: '000001.SZ' }, limit: 9999 }), { dataset_id: 'd', filters: { ts_code: '000001.SZ' } })
+  await withMcpStub(textResult({ data: { rows: [] }, meta: {} }), async (sent) => {
+    await runTool(query, TOKEN, { dataset_id: 'hist_ths_daily', key: '半导体', date_range: ['2026-01-01', null], fields: ['close'] })
+    assert.deepEqual(sent[0].body.params, {
+      name: 'query_dataset',
+      arguments: { dataset_id: 'hist_ths_daily', key: '半导体', date_range: ['2026-01-01', null], fields: ['close'] },
+    })
+  })
+})
+
+test('hhxg_query_dataset：说明写清历史库的取法（key 或 date、date_range、fields、cursor 翻页、不支持 path / days）', () => {
+  const { description } = byName('hhxg_query_dataset')
+  for (const word of ['历史库', 'key', 'date_range', 'fields', 'cursor', 'asc / desc', 'stock_alerts_history']) {
+    assert.ok(description.includes(word), word)
+  }
+  assert.match(description, /历史库不支持 path \/ days/)
+  assert.match(description, /最多 20 个/)
 })
 
 // ── tools/call 通道：参数组装与本地预检 ─────────────────────────────────

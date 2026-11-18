@@ -1,7 +1,7 @@
 {
   "name": "@hhxg/dsh-hhxg-market",
-  "version": "0.7.1",
-  "description": "恢恢量化 (hhxg.top) A股量化数据插件 for DeepSeek Harness：13 个工具——日报快照 / 财经快讯 / 融资融券 / 投资者事件日历 / 市场情绪 / 题材热度 / 数据集目录 / 个股诊断 / 条件选股与策略预设 / 连板晋级预测 / 异动历史 / 数据集查询 / 盘中实时，全部经 hhxg MCP server 取数，填入 Max 会员的 AI 接入 Token（MCP Token）即用。A-share quant data plugin for DeepSeek Harness (dsh): 13 research-only tools bridged to the hhxg MCP server; all of them require a Max-membership MCP token.",
+  "version": "0.8.0",
+  "description": "恢恢量化 (hhxg.top) A股量化数据插件 for DeepSeek Harness：14 个工具——日报快照 / 财经快讯 / 融资融券 / 投资者事件日历 / 市场情绪 / 题材热度 / 数据集目录 / 个股诊断 / 条件选股与策略预设 / 连板晋级预测 / 异动历史 / 数据集查询（含多年历史库） / 盘中实时 / 历史库下载链接，经 hhxg MCP server 与数据 API 取数，填入 Max 会员的 AI 接入 Token（MCP Token）即用。A-share quant data plugin for DeepSeek Harness (dsh): 14 research-only tools (13 bridged to the hhxg MCP server, plus a history-library download-link tool on the hhxg data API); all of them require a Max-membership MCP token.",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -39,7 +39,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "test": "node --test test/contract.test.js test/peers.test.js test/security.test.js test/tools.test.js test/present.test.js test/freshness.test.js test/screen_text.test.js test/client.test.js"
+    "test": "node --test test/contract.test.js test/peers.test.js test/security.test.js test/tools.test.js test/present.test.js test/freshness.test.js test/screen_text.test.js test/hist_text.test.js test/hist_download.test.js test/client.test.js"
   },
   "repository": {
     "type": "git",
